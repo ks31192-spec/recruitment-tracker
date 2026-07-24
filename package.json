@@ -1,6 +1,7 @@
 {
   "name": "recruitment-tracker",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd server && node --watch index.js",

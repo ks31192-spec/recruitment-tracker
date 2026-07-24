@@ -5,3 +5,5 @@ server/uploads/*
 server/db/*.db
 .env
 *.log
+
+.vercel
