@@ -1,22 +1,18 @@
 import { Router } from 'express';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const router = Router();
 router.use(authenticate);
 
-router.get('/candidates', (req, res) => {
+router.get('/candidates', async (req, res) => {
   const { search, source } = req.query;
   let sql = `SELECT c.id, c.full_name, c.father_or_husband_name, c.gender, c.date_of_birth, c.phone, c.whatsapp_number, c.email, c.current_city, c.current_state, c.source, c.referrer_name, c.notes, c.created_at FROM candidates c WHERE 1=1`;
   const params = [];
   if (search) { sql += ` AND (c.full_name LIKE ? OR c.phone LIKE ?)`; const s = `%${search}%`; params.push(s, s); }
   if (source) { sql += ' AND c.source = ?'; params.push(source); }
   sql += ' ORDER BY c.created_at DESC';
-  const rows = db.prepare(sql).all(...params);
+  const rows = await db.prepare(sql).all(...params);
 
   const headers = ['ID', 'Full Name', "Father's/Husband's Name", 'Gender', 'DOB', 'Phone', 'WhatsApp', 'Email', 'City', 'State', 'Source', 'Referrer', 'Notes', 'Created'];
   let csv = headers.join(',') + '\n';
@@ -29,12 +25,12 @@ router.get('/candidates', (req, res) => {
   res.send(csv);
 });
 
-router.get('/vacancy-report/:id', (req, res) => {
-  const v = db.prepare(`SELECT v.*, d.name as department_name, des.title as designation_title
+router.get('/vacancy-report/:id', async (req, res) => {
+  const v = await db.prepare(`SELECT v.*, d.name as department_name, des.title as designation_title
     FROM vacancies v LEFT JOIN departments d ON v.department_id = d.id LEFT JOIN designations des ON v.designation_id = des.id WHERE v.id = ?`).get(req.params.id);
   if (!v) return res.status(404).json({ success: false, error: 'Not found' });
 
-  const apps = db.prepare(`SELECT a.*, c.full_name, c.phone, c.email, c.source FROM applications a
+  const apps = await db.prepare(`SELECT a.*, c.full_name, c.phone, c.email, c.source FROM applications a
     JOIN candidates c ON a.candidate_id = c.id WHERE a.vacancy_id = ? ORDER BY a.applied_date`).all(req.params.id);
 
   let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${v.title} Report</title>
@@ -63,16 +59,18 @@ router.get('/vacancy-report/:id', (req, res) => {
   res.send(html);
 });
 
-router.get('/database-backup', authorize('super_admin'), (req, res) => {
-  const dbPath = join(dirname(__dirname), 'db', 'recruitment.db');
-  try {
-    const data = readFileSync(dbPath);
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="recruitment-backup-${new Date().toISOString().slice(0, 10)}.db"`);
-    res.send(data);
-  } catch {
-    res.status(500).json({ success: false, error: 'Backup failed' });
+// Portable JSON backup of every table (works with Turso and local file alike).
+router.get('/database-backup', authorize('super_admin'), async (req, res) => {
+  const tables = ['users', 'academic_years', 'departments', 'designations', 'vacancies', 'candidates',
+    'candidate_qualifications', 'candidate_experience', 'applications', 'application_stage_history',
+    'interviews', 'interview_panel', 'evaluations', 'offers', 'communication_log', 'documents'];
+  const backup = { exported_at: new Date().toISOString(), tables: {} };
+  for (const t of tables) {
+    backup.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   }
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="recruitment-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.send(JSON.stringify(backup, null, 2));
 });
 
 router.get('/template', (req, res) => {
@@ -82,20 +80,21 @@ router.get('/template', (req, res) => {
   res.send(csv);
 });
 
-router.post('/candidates-import', authorize('super_admin', 'admin', 'hr'), (req, res) => {
+router.post('/candidates-import', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { rows } = req.body;
   if (!rows?.length) return res.status(400).json({ success: false, error: 'No rows provided' });
 
   let imported = 0;
   const errors = [];
-  rows.forEach((row, i) => {
-    if (!row.full_name) { errors.push(`Row ${i + 1}: missing full name`); return; }
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row.full_name) { errors.push(`Row ${i + 1}: missing full name`); continue; }
     try {
-      db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, source, referrer_name, notes, created_by)
+      await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, source, referrer_name, notes, created_by)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(row.full_name, row.father_or_husband_name || null, row.gender || null, row.date_of_birth || null, row.phone || null, row.whatsapp_number || null, row.email || null, row.current_city || null, row.current_state || null, row.source || null, row.referrer_name || null, row.notes || null, req.user.id);
       imported++;
     } catch (e) { errors.push(`Row ${i + 1}: ${e.message}`); }
-  });
+  }
   res.json({ success: true, data: { imported, errors } });
 });
 

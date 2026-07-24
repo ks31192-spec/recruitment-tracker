@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -7,6 +8,7 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
+import { ensureReady } from './db/connection.js';
 import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
 import vacancyRoutes from './routes/vacancies.js';
@@ -26,6 +28,9 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(join(__dirname, 'uploads')));
+
+// Ensure DB schema + seed exist before handling any API request (cached after first run).
+app.use('/api', (req, res, next) => { ensureReady().then(() => next()).catch(next); });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);

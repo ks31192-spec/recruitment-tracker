@@ -25,19 +25,19 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 const router = Router();
 router.use(authenticate);
 
-router.post('/candidates/:id/documents', upload.single('file'), (req, res) => {
+router.post('/candidates/:id/documents', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   const doc_type = req.body.doc_type || 'other';
   const relativePath = `uploads/${req.params.id}/${req.file.filename}`;
-  const r = db.prepare(`INSERT INTO documents (candidate_id, doc_type, file_name, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?)`)
+  const r = await db.prepare(`INSERT INTO documents (candidate_id, doc_type, file_name, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?)`)
     .run(req.params.id, doc_type, req.file.originalname, relativePath, req.user.id);
   res.json({ success: true, data: { id: r.lastInsertRowid, file_name: req.file.originalname, file_path: relativePath } });
 });
 
-router.post('/candidates/:id/photo', upload.single('photo'), (req, res) => {
+router.post('/candidates/:id/photo', upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   const relativePath = `uploads/${req.params.id}/${req.file.filename}`;
-  db.prepare('UPDATE candidates SET photo_path = ?, updated_at = datetime("now") WHERE id = ?').run(relativePath, req.params.id);
+  await db.prepare('UPDATE candidates SET photo_path = ?, updated_at = datetime("now") WHERE id = ?').run(relativePath, req.params.id);
   res.json({ success: true, data: { photo_path: relativePath } });
 });
 
