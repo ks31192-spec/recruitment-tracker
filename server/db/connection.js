@@ -2,24 +2,13 @@ import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
-import initSqlJs from 'sql.js/dist/sql-asm.js';
 import SCHEMA_SQL from './schema-string.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// sql.js (asm.js build) — pure JS SQLite, no native deps.
-// Local dev: persisted to disk file. Vercel: in-memory (reseeds on cold start).
 const localFile = process.env.VERCEL ? null : join(__dirname, 'recruitment.db');
-let dbData = null;
-if (localFile && existsSync(localFile)) {
-  dbData = readFileSync(localFile);
-}
-const SQL = await initSqlJs();
-const sqlDb = dbData ? new SQL.Database(dbData) : new SQL.Database();
 
-const save = localFile ? () => {
-  writeFileSync(localFile, Buffer.from(sqlDb.export()));
-} : () => {};
+let sqlDb = null;
+let save = () => {};
 
 function execute(sql, args = []) {
   const params = args.map(a => a === undefined ? null : a);
@@ -82,9 +71,22 @@ export function ensureReady() {
   if (!readyPromise) {
     readyPromise = (async () => {
       try {
+        const initSqlJs = (await import('sql.js/dist/sql-asm.js')).default;
+        const SQL = await initSqlJs();
+
+        let dbData = null;
+        if (localFile && existsSync(localFile)) {
+          dbData = readFileSync(localFile);
+        }
+        sqlDb = dbData ? new SQL.Database(dbData) : new SQL.Database();
+
+        if (localFile) {
+          save = () => { writeFileSync(localFile, Buffer.from(sqlDb.export())); };
+        }
+
         executeMultiple(SCHEMA_SQL);
       } catch (e) {
-        console.error('Schema init failed:', e.message);
+        console.error('DB init failed:', e.message);
         readyPromise = null;
         throw e;
       }

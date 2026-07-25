@@ -35,7 +35,15 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(join(__dirname, 'uploads')));
 
-// Ensure DB schema + seed exist before handling any API request (cached after first run).
+app.get('/api/health', async (_req, res) => {
+  try {
+    await ensureReady();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message, stack: e.stack });
+  }
+});
+
 app.use('/api', (req, res, next) => { ensureReady().then(() => next()).catch(next); });
 
 // Public routes (no auth)
