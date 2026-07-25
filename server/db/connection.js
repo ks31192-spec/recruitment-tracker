@@ -43,7 +43,6 @@ function rowToObj(row, columns) {
   return o;
 }
 
-let pendingSave = null;
 async function flushToFirestore() {
   if (!dirty) return;
   const firestore = getFirestore();
@@ -93,6 +92,7 @@ let readyPromise = null;
 export function ensureReady() {
   if (!readyPromise) {
     readyPromise = (async () => {
+      let loadedFromFirestore = false;
       try {
         const initSqlJs = (await import('sql.js/dist/sql-asm.js')).default;
         const SQL = await initSqlJs();
@@ -107,6 +107,7 @@ export function ensureReady() {
             if (doc.exists) {
               const stored = doc.data().data;
               dbData = Buffer.isBuffer(stored) ? stored : Buffer.from(stored);
+              loadedFromFirestore = true;
               console.log('Loaded DB from Firestore:', dbData.length, 'bytes');
             }
           }
@@ -141,7 +142,12 @@ export function ensureReady() {
       execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2025-26', '2025-04-01', '2026-03-31', 1]);
       execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2024-25', '2024-04-01', '2025-03-31', 0]);
       save();
-      await flushToFirestore();
+
+      if (loadedFromFirestore) {
+        dirty = false;
+      } else {
+        await flushToFirestore();
+      }
     })();
   }
   return readyPromise;
