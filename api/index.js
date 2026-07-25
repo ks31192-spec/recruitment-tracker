@@ -1,10 +1,13 @@
-let app;
-try {
-  app = (await import('../server/index.js')).default;
-} catch (e) {
-  const express = (await import('express')).default;
-  app = express();
-  const msg = { error: e.message, stack: e.stack };
-  app.use((_req, res) => res.status(500).json(msg));
+let handler;
+
+export default async function (req, res) {
+  try {
+    if (!handler) {
+      const mod = await import('../server/index.js');
+      handler = mod.default;
+    }
+    return handler(req, res);
+  } catch (e) {
+    res.status(500).json({ error: e.message, stack: e.stack });
+  }
 }
-export default app;
