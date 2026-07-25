@@ -7,11 +7,19 @@ import bcrypt from 'bcryptjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Turso (libSQL) when configured; otherwise a local SQLite file.
-// On Vercel the bundle dir is read-only, so fall back to the writable (but
-// ephemeral) /tmp — data there resets on cold starts until Turso is set up.
-const localFile = process.env.VERCEL ? '/tmp/recruitment.db' : join(__dirname, 'recruitment.db');
-const url = process.env.TURSO_DATABASE_URL || `file:${localFile}`;
-const authToken = process.env.TURSO_AUTH_TOKEN;
+// On Vercel without Turso, use in-memory DB (ephemeral but functional).
+// Local dev uses a file in this directory.
+let url, authToken;
+if (process.env.TURSO_DATABASE_URL) {
+  url = process.env.TURSO_DATABASE_URL;
+  authToken = process.env.TURSO_AUTH_TOKEN;
+} else if (process.env.VERCEL) {
+  // Native file: mode fails on Vercel (EROFS); use in-memory instead.
+  // Data persists within a warm function instance but resets on cold starts.
+  url = ':memory:';
+} else {
+  url = `file:${join(__dirname, 'recruitment.db')}`;
+}
 
 const client = createClient({ url, authToken, intMode: 'number' });
 
@@ -21,7 +29,6 @@ function rowToObj(row, columns) {
   return o;
 }
 
-// Drop-in async replacement for the previous better-sqlite3-style wrapper.
 const wrapper = {
   prepare(sql) {
     return {
@@ -49,14 +56,18 @@ const wrapper = {
   client,
 };
 
-// Ensure schema + seed data exist. Idempotent, runs once per process
-// (the promise is cached), and safe to await on every request.
 let readyPromise = null;
 export function ensureReady() {
   if (!readyPromise) {
     readyPromise = (async () => {
-      const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
-      await client.executeMultiple(schema);
+      try {
+        const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
+        await client.executeMultiple(schema);
+      } catch (e) {
+        console.error('Schema init failed:', e.message);
+        readyPromise = null;
+        throw e;
+      }
 
       const hash = bcrypt.hashSync('Admin@123', 10);
       await client.execute({
