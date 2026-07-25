@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
-import { ensureReady } from './db/connection.js';
+import { ensureReady, refreshFromFirestore } from './db/connection.js';
 import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
 import vacancyRoutes from './routes/vacancies.js';
@@ -44,7 +44,7 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-app.use('/api', (req, res, next) => { ensureReady().then(() => next()).catch(next); });
+app.use('/api', (req, res, next) => { ensureReady().then(() => refreshFromFirestore()).then(() => next()).catch(next); });
 
 // Public routes (no auth)
 app.use('/api/public', publicRoutes);

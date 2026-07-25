@@ -9,8 +9,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const localFile = process.env.VERCEL ? null : join(__dirname, 'recruitment.db');
 
 let sqlDb = null;
+let SQL = null;
 let save = () => {};
 let dirty = false;
+let localVersion = 0;
 
 function execute(sql, args = []) {
   const params = args.map(a => a === undefined ? null : a);
@@ -49,15 +51,41 @@ async function flushToFirestore() {
   if (!firestore || !sqlDb) return;
   dirty = false;
   try {
+    localVersion++;
     const blob = Buffer.from(sqlDb.export());
-    await firestore.doc('system/sqlite_db').set({
+    const batch = firestore.batch();
+    batch.set(firestore.doc('system/sqlite_db'), {
       data: blob,
       size: blob.length,
+      version: localVersion,
       updated_at: new Date(),
     });
+    batch.set(firestore.doc('system/db_version'), { v: localVersion });
+    await batch.commit();
   } catch (e) {
     dirty = true;
     console.error('Firestore save failed:', e.message);
+  }
+}
+
+async function refreshFromFirestore() {
+  const firestore = getFirestore();
+  if (!firestore || !SQL) return;
+  try {
+    const vDoc = await firestore.doc('system/db_version').get();
+    if (!vDoc.exists) return;
+    const remoteVersion = vDoc.data().v;
+    if (remoteVersion === localVersion) return;
+
+    const doc = await firestore.doc('system/sqlite_db').get();
+    if (!doc.exists) return;
+    const stored = doc.data().data;
+    const dbData = Buffer.isBuffer(stored) ? stored : Buffer.from(stored);
+    sqlDb = new SQL.Database(new Uint8Array(dbData));
+    localVersion = remoteVersion;
+    console.log('Refreshed DB from Firestore, version:', localVersion);
+  } catch (e) {
+    console.error('Firestore refresh failed:', e.message);
   }
 }
 
@@ -95,7 +123,7 @@ export function ensureReady() {
       let loadedFromFirestore = false;
       try {
         const initSqlJs = (await import('sql.js/dist/sql-asm.js')).default;
-        const SQL = await initSqlJs();
+        SQL = await initSqlJs();
 
         let dbData = null;
         if (localFile && existsSync(localFile)) {
@@ -105,10 +133,12 @@ export function ensureReady() {
           if (firestore) {
             const doc = await firestore.doc('system/sqlite_db').get();
             if (doc.exists) {
-              const stored = doc.data().data;
+              const docData = doc.data();
+              const stored = docData.data;
               dbData = Buffer.isBuffer(stored) ? stored : Buffer.from(stored);
+              localVersion = docData.version || 0;
               loadedFromFirestore = true;
-              console.log('Loaded DB from Firestore:', dbData.length, 'bytes');
+              console.log('Loaded DB from Firestore:', dbData.length, 'bytes, version:', localVersion);
             }
           }
         }
@@ -153,4 +183,5 @@ export function ensureReady() {
   return readyPromise;
 }
 
+export { refreshFromFirestore };
 export default wrapper;
