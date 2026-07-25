@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api.js';
 import { useToast } from '../components/Toast.jsx';
@@ -7,7 +7,7 @@ import EvaluationModal from '../components/EvaluationModal.jsx';
 import EvaluationView from '../components/EvaluationView.jsx';
 import CommunicationModal from '../components/CommunicationModal.jsx';
 import OfferModal from '../components/OfferModal.jsx';
-import { ArrowLeft, Edit, Briefcase, FileText, Phone, Mail, MapPin, Plus, CalendarCheck, MessageCircle, Star, Gift, Upload } from 'lucide-react';
+import { ArrowLeft, Edit, Briefcase, FileText, Phone, Mail, MapPin, Plus, CalendarCheck, MessageCircle, Star, Gift, Upload, Tag, X, ShieldBan, StickyNote, Trash2, Download, ChevronDown } from 'lucide-react';
 
 const sourceLabels = { walk_in: 'Walk-in', naukri: 'Naukri', whatsapp: 'WhatsApp', referral: 'Referral', website: 'Website', direct_call: 'Direct Call', other: 'Other' };
 const stageColors = {
@@ -17,6 +17,8 @@ const stageColors = {
   joined: 'bg-green-200 text-green-800', waitlisted: 'bg-amber-100 text-amber-700', declined: 'bg-orange-100 text-orange-700',
 };
 const commTypeIcons = { call: Phone, whatsapp: MessageCircle, email: Mail, sms: MessageCircle, in_person: MapPin };
+
+const OFFER_STAGES = ['offer_made', 'joined'];
 
 export default function CandidateDetail() {
   const { id } = useParams();
@@ -36,11 +38,62 @@ export default function CandidateDetail() {
   const [offerModal, setOfferModal] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  // Notes state
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState(null);
+
+  // Tags state
+  const [candidateTags, setCandidateTags] = useState([]);
+  const [allTags, setAllTags] = useState([]);
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#3b82f6');
+  const [creatingTag, setCreatingTag] = useState(false);
+  const tagDropdownRef = useRef(null);
+
+  // Blacklist state
+  const [blacklist, setBlacklist] = useState(null);
+  const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+  const [blacklistReason, setBlacklistReason] = useState('');
+  const [blacklisting, setBlacklisting] = useState(false);
+
   const load = () => {
     api.get(`/candidates/${id}`).then(r => setCandidate(r.data.data));
     api.get(`/candidates/${id}/timeline`).then(r => setTimeline(r.data.data));
   };
-  useEffect(load, [id]);
+
+  const loadTags = () => {
+    api.get(`/candidates/${id}/tags`).then(r => setCandidateTags(r.data.data));
+    api.get('/candidates/meta/tags').then(r => setAllTags(r.data.data));
+  };
+
+  const loadBlacklist = () => {
+    api.get(`/candidates/${id}/blacklist`).then(r => setBlacklist(r.data.data || null));
+  };
+
+  const loadNotes = () => {
+    api.get(`/candidates/${id}/notes`).then(r => setNotes(r.data.data));
+  };
+
+  useEffect(() => {
+    load();
+    loadTags();
+    loadBlacklist();
+    loadNotes();
+  }, [id]);
+
+  // Close tag dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target)) {
+        setShowTagDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleApply = async () => {
     if (!applyVacancy) return;
@@ -89,13 +142,114 @@ export default function CandidateDetail() {
     finally { e.target.value = ''; }
   };
 
+  // --- Notes handlers ---
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    setAddingNote(true);
+    try {
+      await api.post(`/candidates/${id}/notes`, { note: newNote.trim() });
+      toast.success('Note added');
+      setNewNote('');
+      loadNotes();
+    } catch { toast.error('Failed to add note'); }
+    finally { setAddingNote(false); }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    try {
+      await api.delete(`/candidates/${id}/notes/${noteId}`);
+      toast.success('Note deleted');
+      setDeletingNoteId(null);
+      loadNotes();
+    } catch { toast.error('Failed to delete note'); }
+  };
+
+  // --- Tags handlers ---
+  const handleAddTag = async (tagId) => {
+    try {
+      await api.post(`/candidates/${id}/tags`, { tag_id: tagId });
+      toast.success('Tag added');
+      loadTags();
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to add tag'); }
+  };
+
+  const handleRemoveTag = async (tagId) => {
+    try {
+      await api.delete(`/candidates/${id}/tags/${tagId}`);
+      toast.success('Tag removed');
+      loadTags();
+    } catch { toast.error('Failed to remove tag'); }
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    setCreatingTag(true);
+    try {
+      const r = await api.post('/candidates/meta/tags', { name: newTagName.trim(), color: newTagColor });
+      toast.success('Tag created');
+      setNewTagName('');
+      setNewTagColor('#3b82f6');
+      loadTags();
+      // Also add it to this candidate
+      if (r.data?.data?.id) handleAddTag(r.data.data.id);
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to create tag'); }
+    finally { setCreatingTag(false); }
+  };
+
+  // --- Blacklist handlers ---
+  const handleBlacklist = async () => {
+    if (!blacklistReason.trim()) return;
+    setBlacklisting(true);
+    try {
+      await api.post(`/candidates/${id}/blacklist`, { reason: blacklistReason.trim() });
+      toast.success('Candidate blacklisted');
+      setShowBlacklistModal(false);
+      setBlacklistReason('');
+      loadBlacklist();
+    } catch { toast.error('Failed to blacklist'); }
+    finally { setBlacklisting(false); }
+  };
+
+  const handleRemoveBlacklist = async () => {
+    if (!confirm('Remove this candidate from the blacklist?')) return;
+    try {
+      await api.delete(`/candidates/${id}/blacklist`);
+      toast.success('Removed from blacklist');
+      loadBlacklist();
+    } catch { toast.error('Failed to remove from blacklist'); }
+  };
+
+  // --- Offer letter download ---
+  const handleDownloadOffer = (applicationId) => {
+    const token = localStorage.getItem('token');
+    window.open(`/api/offers/${applicationId}/letter?token=${encodeURIComponent(token)}`, '_blank');
+  };
+
   if (!candidate) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
 
-  const tabs = ['overview', 'applications', 'qualifications', 'experience', 'documents', 'timeline'];
+  const tabs = ['overview', 'applications', 'qualifications', 'experience', 'documents', 'timeline', 'notes'];
   const interviews = timeline.filter(e => e.type === 'interview');
+
+  // Tags not yet assigned to this candidate
+  const availableTags = allTags.filter(t => !candidateTags.some(ct => ct.id === t.id));
 
   return (
     <div className="space-y-6">
+      {/* Blacklist banner */}
+      {blacklist && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <ShieldBan size={20} className="text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-800">This candidate is blacklisted</p>
+            <p className="text-sm text-red-700 mt-0.5">{blacklist.reason}</p>
+            <p className="text-xs text-red-500 mt-1">Since {new Date(blacklist.created_at).toLocaleDateString()}</p>
+          </div>
+          <button onClick={handleRemoveBlacklist} className="px-3 py-1.5 text-xs font-medium text-red-700 border border-red-300 rounded-lg hover:bg-red-100 flex-shrink-0">
+            Remove from Blacklist
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => navigate('/candidates')} className="p-2 hover:bg-gray-100 rounded-lg"><ArrowLeft size={20} /></button>
         <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -124,7 +278,61 @@ export default function CandidateDetail() {
         <div className="flex gap-2 flex-wrap">
           <button onClick={() => setCommModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><MessageCircle size={16} /> Log Call</button>
           <button onClick={openApply} className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><Briefcase size={16} /> Apply</button>
+          {blacklist ? (
+            <button onClick={handleRemoveBlacklist} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-red-300 text-red-700 rounded-lg hover:bg-red-50"><ShieldBan size={16} /> Unblacklist</button>
+          ) : (
+            <button onClick={() => setShowBlacklistModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-red-600"><ShieldBan size={16} /> Blacklist</button>
+          )}
           <Link to={`/candidates/${id}/edit`} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><Edit size={16} /> Edit</Link>
+        </div>
+      </div>
+
+      {/* Tags section */}
+      <div className="flex items-center gap-2 flex-wrap" ref={tagDropdownRef}>
+        <Tag size={16} className="text-gray-400" />
+        {candidateTags.map(tag => (
+          <span key={tag.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white cursor-default group"
+            style={{ backgroundColor: tag.color || '#6b7280' }}>
+            {tag.name}
+            <button onClick={() => handleRemoveTag(tag.id)} className="opacity-60 hover:opacity-100 ml-0.5" title="Remove tag">
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        <div className="relative">
+          <button onClick={() => setShowTagDropdown(!showTagDropdown)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-500 border border-dashed border-gray-300 rounded-full hover:border-gray-400 hover:text-gray-700">
+            <Plus size={12} /> Add Tag
+          </button>
+          {showTagDropdown && (
+            <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+              {availableTags.length > 0 && (
+                <div className="max-h-40 overflow-y-auto">
+                  {availableTags.map(tag => (
+                    <button key={tag.id} onClick={() => { handleAddTag(tag.id); setShowTagDropdown(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color || '#6b7280' }} />
+                      {tag.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="border-t border-gray-100 p-2">
+                <p className="text-xs text-gray-400 mb-1.5">Create new tag</p>
+                <div className="flex gap-1.5">
+                  <input type="color" value={newTagColor} onChange={e => setNewTagColor(e.target.value)}
+                    className="w-8 h-8 rounded border border-gray-200 cursor-pointer p-0.5" />
+                  <input type="text" value={newTagName} onChange={e => setNewTagName(e.target.value)}
+                    placeholder="Tag name" className="flex-1 text-sm px-2 py-1 border border-gray-200 rounded-md min-w-0"
+                    onKeyDown={e => e.key === 'Enter' && handleCreateTag()} />
+                  <button onClick={handleCreateTag} disabled={!newTagName.trim() || creatingTag}
+                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -171,6 +379,9 @@ export default function CandidateDetail() {
                   <button onClick={() => setScheduleModal(a.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50"><CalendarCheck size={13} /> Schedule Interview</button>
                   {a.current_stage === 'selected' && (
                     <button onClick={() => setOfferModal(a.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700"><Gift size={13} /> Make Offer</button>
+                  )}
+                  {OFFER_STAGES.includes(a.current_stage) && (
+                    <button onClick={() => handleDownloadOffer(a.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"><Download size={13} /> Download Offer Letter</button>
                   )}
                 </div>
               </div>
@@ -261,6 +472,44 @@ export default function CandidateDetail() {
             ))}
           </div>
         )}
+
+        {tab === 'notes' && (
+          <div className="space-y-4">
+            {/* Add note input */}
+            <div className="flex gap-2">
+              <textarea value={newNote} onChange={e => setNewNote(e.target.value)}
+                placeholder="Write an internal note..." rows={2}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <button onClick={handleAddNote} disabled={!newNote.trim() || addingNote}
+                className="self-end px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5">
+                <StickyNote size={14} /> {addingNote ? 'Adding...' : 'Add Note'}
+              </button>
+            </div>
+            {/* Notes list */}
+            {notes.length === 0 ? <p className="text-sm text-gray-500">No notes yet.</p> : notes.map(n => (
+              <div key={n.id} className="p-4 border border-gray-100 rounded-lg group">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.note}</p>
+                    <p className="text-xs text-gray-400 mt-2">{n.user_name} &middot; {new Date(n.created_at).toLocaleString()}</p>
+                  </div>
+                  {deletingNoteId === n.id ? (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-xs text-red-600">Delete?</span>
+                      <button onClick={() => handleDeleteNote(n.id)} className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">Yes</button>
+                      <button onClick={() => setDeletingNoteId(null)} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">No</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDeletingNoteId(n.id)}
+                      className="p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" title="Delete note">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {showApply && (
@@ -274,6 +523,26 @@ export default function CandidateDetail() {
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowApply(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleApply} disabled={!applyVacancy} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Apply</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blacklist modal */}
+      {showBlacklistModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-2 text-red-700 flex items-center gap-2"><ShieldBan size={20} /> Blacklist Candidate</h3>
+            <p className="text-sm text-gray-500 mb-4">This candidate will be flagged and a red banner will appear on their profile.</p>
+            <textarea value={blacklistReason} onChange={e => setBlacklistReason(e.target.value)}
+              placeholder="Reason for blacklisting..." rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent mb-4" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setShowBlacklistModal(false); setBlacklistReason(''); }} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleBlacklist} disabled={!blacklistReason.trim() || blacklisting}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                {blacklisting ? 'Blacklisting...' : 'Blacklist'}
+              </button>
             </div>
           </div>
         </div>

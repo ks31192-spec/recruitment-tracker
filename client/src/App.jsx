@@ -4,6 +4,9 @@ import { ToastProvider } from './components/Toast.jsx';
 import GlobalSearch from './components/GlobalSearch.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import CareersPage from './pages/CareersPage.jsx';
+import PublicApply from './pages/PublicApply.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Vacancies from './pages/Vacancies.jsx';
 import VacancyForm from './pages/VacancyForm.jsx';
@@ -13,6 +16,8 @@ import CandidateForm from './pages/CandidateForm.jsx';
 import CandidateDetail from './pages/CandidateDetail.jsx';
 import Interviews from './pages/Interviews.jsx';
 import FollowUps from './pages/FollowUps.jsx';
+import Analytics from './pages/Analytics.jsx';
+import AuditLog from './pages/AuditLog.jsx';
 import Settings from './pages/Settings.jsx';
 
 function ProtectedRoute({ children }) {
@@ -27,6 +32,9 @@ export default function App() {
     <ToastProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/careers" element={<CareersPage />} />
+        <Route path="/careers/:vacancyId" element={<PublicApply />} />
         <Route path="/" element={<ProtectedRoute><GlobalSearch /><Layout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<Dashboard />} />
@@ -40,6 +48,8 @@ export default function App() {
           <Route path="candidates/:id" element={<CandidateDetail />} />
           <Route path="interviews" element={<Interviews />} />
           <Route path="follow-ups" element={<FollowUps />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="audit-log" element={<AuditLog />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

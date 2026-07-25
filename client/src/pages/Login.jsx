@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { LogIn } from 'lucide-react';
 
@@ -53,6 +53,10 @@ export default function Login() {
             <LogIn size={18} />
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
+          <div className="flex items-center justify-between text-sm">
+            <Link to="/forgot-password" className="text-blue-600 hover:underline">Forgot Password?</Link>
+            <Link to="/careers" className="text-gray-500 hover:text-gray-700">View Open Positions</Link>
+          </div>
         </form>
       </div>
     </div>

@@ -118,4 +118,30 @@ router.put('/users/:id', authorize('super_admin'), async (req, res) => {
   res.json({ success: true, data: { id: +req.params.id, name, email, role, is_active: !!is_active } });
 });
 
+// --- Email Templates ---
+router.get('/email-templates', async (_req, res) => {
+  const rows = await db.prepare('SELECT * FROM email_templates ORDER BY template_type, name').all();
+  res.json({ success: true, data: rows });
+});
+
+router.post('/email-templates', authorize('super_admin', 'admin'), async (req, res) => {
+  const { name, subject, body, template_type } = req.body;
+  if (!name || !subject || !body || !template_type) return res.status(400).json({ success: false, error: 'All fields required' });
+  const r = await db.prepare('INSERT INTO email_templates (name, subject, body, template_type, created_by) VALUES (?, ?, ?, ?, ?)')
+    .run(name, subject, body, template_type, req.user.id);
+  res.json({ success: true, data: { id: r.lastInsertRowid } });
+});
+
+router.put('/email-templates/:id', authorize('super_admin', 'admin'), async (req, res) => {
+  const { name, subject, body, template_type } = req.body;
+  await db.prepare('UPDATE email_templates SET name=?, subject=?, body=?, template_type=?, updated_at=datetime("now") WHERE id=?')
+    .run(name, subject, body, template_type, req.params.id);
+  res.json({ success: true, data: { id: +req.params.id } });
+});
+
+router.delete('/email-templates/:id', authorize('super_admin', 'admin'), async (req, res) => {
+  await db.prepare('DELETE FROM email_templates WHERE id = ?').run(req.params.id);
+  res.json({ success: true, data: { message: 'Deleted' } });
+});
+
 export default router;

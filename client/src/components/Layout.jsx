@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { LayoutDashboard, Briefcase, Users, CalendarCheck, Bell, Settings, LogOut, Menu, Search } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, CalendarCheck, Bell, BarChart3, Shield, Settings, LogOut, Menu, Search, Globe } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
@@ -9,6 +9,8 @@ const navItems = [
   { to: '/candidates', icon: Users, label: 'Candidates' },
   { to: '/interviews', icon: CalendarCheck, label: 'Interviews' },
   { to: '/follow-ups', icon: Bell, label: 'Follow-ups' },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/audit-log', icon: Shield, label: 'Audit Log', roles: ['super_admin', 'admin'] },
   { to: '/settings', icon: Settings, label: 'Settings', roles: ['super_admin', 'admin'] },
 ];
 
@@ -38,7 +40,7 @@ export default function Layout() {
           <kbd className="text-xs bg-white px-1.5 py-0.5 rounded border border-gray-200">Ctrl+K</kbd>
         </button>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.filter(n => !n.roles || n.roles.includes(user?.role)).map(item => (
             <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>
@@ -46,6 +48,11 @@ export default function Layout() {
               {item.label}
             </NavLink>
           ))}
+          <a href="/careers" target="_blank" rel="noopener"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+            <Globe size={18} />
+            Careers Page
+          </a>
         </nav>
         <div className="p-3 border-t border-gray-200">
           <div className="px-3 py-2 mb-2">

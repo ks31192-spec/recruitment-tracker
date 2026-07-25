@@ -230,3 +230,90 @@ CREATE TABLE IF NOT EXISTS documents (
   uploaded_by INTEGER REFERENCES users(id),
   uploaded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Audit Log
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id),
+  user_name TEXT,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id INTEGER,
+  details TEXT,
+  ip_address TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id);
+
+-- Email Templates
+CREATE TABLE IF NOT EXISTS email_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  template_type TEXT NOT NULL CHECK(template_type IN ('interview_invite','offer_letter','rejection','follow_up','welcome','custom')),
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Screening Questions per vacancy
+CREATE TABLE IF NOT EXISTS screening_questions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  vacancy_id INTEGER NOT NULL REFERENCES vacancies(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  is_knockout INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+-- Screening Answers per application
+CREATE TABLE IF NOT EXISTS screening_answers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES screening_questions(id) ON DELETE CASCADE,
+  answer TEXT,
+  UNIQUE(application_id, question_id)
+);
+
+-- Candidate Notes / Internal Comments
+CREATE TABLE IF NOT EXISTS candidate_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  user_name TEXT,
+  note TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Candidate Tags
+CREATE TABLE IF NOT EXISTS tags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL DEFAULT '#3b82f6'
+);
+
+CREATE TABLE IF NOT EXISTS candidate_tags (
+  candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+  tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (candidate_id, tag_id)
+);
+
+-- Blacklist
+CREATE TABLE IF NOT EXISTS blacklist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  candidate_id INTEGER NOT NULL UNIQUE REFERENCES candidates(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  blacklisted_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Password Reset Tokens
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  token TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

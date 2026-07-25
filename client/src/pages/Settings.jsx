@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
-import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 
 function EditableList({ endpoint, nameKey, label }) {
@@ -77,6 +77,10 @@ function UsersTab() {
   const [users, setUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'hr' });
+  const [resetModal, setResetModal] = useState(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const toast = useToast();
 
   const load = () => api.get('/settings/users').then(r => setUsers(r.data.data));
   useEffect(() => { load(); }, []);
@@ -99,6 +103,21 @@ function UsersTab() {
     load();
   };
 
+  const handleResetPassword = async () => {
+    if (!resetPassword.trim()) return;
+    setResetting(true);
+    try {
+      await api.post('/auth/admin-reset-password', { user_id: resetModal.id, new_password: resetPassword });
+      toast.success(`Password reset for ${resetModal.name}`);
+      setResetModal(null);
+      setResetPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to reset password');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <div>
       <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 mb-4"><Plus size={16} /> Add User</button>
@@ -116,7 +135,7 @@ function UsersTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-            <tr><th className="text-left px-4 py-2">Name</th><th className="text-left px-4 py-2">Email</th><th className="text-left px-4 py-2">Role</th><th className="text-left px-4 py-2">Status</th></tr>
+            <tr><th className="text-left px-4 py-2">Name</th><th className="text-left px-4 py-2">Email</th><th className="text-left px-4 py-2">Role</th><th className="text-left px-4 py-2">Status</th><th className="text-left px-4 py-2">Actions</th></tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {users.map(u => (
@@ -133,10 +152,170 @@ function UsersTab() {
                     {u.is_active ? 'Active' : 'Inactive'}
                   </button>
                 </td>
+                <td className="px-4 py-2.5">
+                  <button onClick={() => { setResetModal(u); setResetPassword(''); }} className="flex items-center gap-1 text-xs px-2 py-1 text-orange-600 hover:bg-orange-50 rounded" title="Reset Password">
+                    <KeyRound size={13} /> Reset Password
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Password Reset Modal */}
+      {resetModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setResetModal(null)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Reset Password</h3>
+            <p className="text-sm text-gray-500 mb-4">Set a new password for <span className="font-medium text-gray-700">{resetModal.name}</span> ({resetModal.email})</p>
+            <input
+              type="password"
+              value={resetPassword}
+              onChange={e => setResetPassword(e.target.value)}
+              placeholder="Enter new password"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-4"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setResetModal(null)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleResetPassword} disabled={resetting || !resetPassword.trim()} className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50">
+                {resetting ? 'Resetting...' : 'Reset Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TEMPLATE_TYPES = [
+  { value: 'interview_invite', label: 'Interview Invite' },
+  { value: 'offer_letter', label: 'Offer Letter' },
+  { value: 'rejection', label: 'Rejection' },
+  { value: 'follow_up', label: 'Follow Up' },
+  { value: 'welcome', label: 'Welcome' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const PLACEHOLDER_VARS = '{{candidate_name}}, {{vacancy_title}}, {{interview_date}}, {{interview_time}}, {{school_name}}, {{designation}}';
+
+function EmailTemplatesTab() {
+  const toast = useToast();
+  const [templates, setTemplates] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState({ name: '', subject: '', body: '', template_type: 'custom' });
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = () => api.get('/settings/email-templates').then(r => setTemplates(r.data.data));
+  useEffect(() => { load(); }, []);
+
+  const resetForm = () => {
+    setForm({ name: '', subject: '', body: '', template_type: 'custom' });
+    setEditId(null);
+    setShowForm(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.subject.trim() || !form.body.trim()) return;
+    setSaving(true);
+    try {
+      if (editId) {
+        await api.put(`/settings/email-templates/${editId}`, form);
+        toast.success('Template updated');
+      } else {
+        await api.post('/settings/email-templates', form);
+        toast.success('Template created');
+      }
+      resetForm();
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save template');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startEdit = (t) => {
+    setForm({ name: t.name, subject: t.subject, body: t.body, template_type: t.template_type });
+    setEditId(t.id);
+    setShowForm(true);
+  };
+
+  const del = async (id) => {
+    try {
+      await api.delete(`/settings/email-templates/${id}`);
+      setConfirmDelete(null);
+      toast.success('Template deleted');
+      load();
+    } catch (err) {
+      toast.error('Failed to delete template');
+    }
+  };
+
+  const typeLabel = (val) => TEMPLATE_TYPES.find(t => t.value === val)?.label || val;
+
+  return (
+    <div>
+      <button onClick={() => { resetForm(); setShowForm(!showForm); }} className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 mb-4">
+        <Plus size={16} /> {showForm && !editId ? 'Cancel' : 'Add Template'}
+      </button>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
+          <div className="grid md:grid-cols-2 gap-3">
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Template name" required className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            <select value={form.template_type} onChange={e => setForm(f => ({ ...f, template_type: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Email subject" required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+          <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="Email body..." required rows={6} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-y" />
+          <p className="text-xs text-gray-400">Available placeholders: <span className="text-gray-500 font-mono">{PLACEHOLDER_VARS}</span></p>
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              {saving ? 'Saving...' : editId ? 'Update Template' : 'Create Template'}
+            </button>
+            {editId && <button type="button" onClick={resetForm} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>}
+          </div>
+        </form>
+      )}
+
+      <div className="divide-y divide-gray-100">
+        {templates.length === 0 && !showForm && (
+          <p className="text-sm text-gray-400 py-4">No email templates yet. Click "Add Template" to create one.</p>
+        )}
+        {templates.map(t => (
+          <div key={t.id} className="py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Mail size={14} className="text-gray-400 shrink-0" />
+                  <span className="text-sm font-medium text-gray-900 truncate">{t.name}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 shrink-0">{typeLabel(t.template_type)}</span>
+                </div>
+                <p className="text-xs text-gray-500 truncate pl-[22px]">Subject: {t.subject}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => startEdit(t)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Pencil size={14} /></button>
+                {confirmDelete === t.id ? (
+                  <div className="flex items-center gap-1 text-xs">
+                    <span className="text-red-600">Delete?</span>
+                    <button onClick={() => del(t.id)} className="px-2 py-0.5 bg-red-600 text-white rounded text-xs">Yes</button>
+                    <button onClick={() => setConfirmDelete(null)} className="px-2 py-0.5 border border-gray-300 rounded text-xs">No</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDelete(t.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={14} /></button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -228,6 +407,7 @@ export default function Settings() {
   const { user } = useAuth();
   const [tab, setTab] = useState('departments');
   const tabs = ['departments', 'designations', 'academic-years'];
+  if (user?.role === 'super_admin' || user?.role === 'admin') tabs.push('email-templates');
   if (user?.role === 'super_admin') tabs.push('users', 'data');
 
   return (
@@ -245,6 +425,7 @@ export default function Settings() {
         {tab === 'departments' && <EditableList endpoint="/settings/departments" nameKey="name" label="Department" />}
         {tab === 'designations' && <EditableList endpoint="/settings/designations" nameKey="title" label="Designation" />}
         {tab === 'academic-years' && <EditableList endpoint="/settings/academic-years" nameKey="label" label="Academic Year" />}
+        {tab === 'email-templates' && <EmailTemplatesTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'data' && <DataTab />}
       </div>

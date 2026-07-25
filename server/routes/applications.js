@@ -40,4 +40,20 @@ router.put('/:id/stage', async (req, res) => {
   res.json({ success: true, data: { id: +req.params.id, stage } });
 });
 
+router.post('/bulk-stage', async (req, res) => {
+  const { application_ids, stage, reason } = req.body;
+  if (!application_ids?.length || !stage) return res.status(400).json({ success: false, error: 'application_ids and stage required' });
+
+  let updated = 0;
+  for (const appId of application_ids) {
+    const app = await db.prepare('SELECT current_stage FROM applications WHERE id = ?').get(appId);
+    if (!app || app.current_stage === stage) continue;
+    await db.prepare(`UPDATE applications SET current_stage = ?, updated_at = datetime('now') WHERE id = ?`).run(stage, appId);
+    await db.prepare(`INSERT INTO application_stage_history (application_id, from_stage, to_stage, changed_by, reason) VALUES (?, ?, ?, ?, ?)`)
+      .run(appId, app.current_stage, stage, req.user.id, reason || null);
+    updated++;
+  }
+  res.json({ success: true, data: { updated } });
+});
+
 export default router;

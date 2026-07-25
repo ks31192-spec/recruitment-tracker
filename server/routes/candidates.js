@@ -114,4 +114,87 @@ router.post('/:id/experience', authenticate, async (req, res) => {
   res.json({ success: true, data: { id: r.lastInsertRowid } });
 });
 
+// --- Notes ---
+router.get('/:id/notes', async (req, res) => {
+  const notes = await db.prepare('SELECT * FROM candidate_notes WHERE candidate_id = ? ORDER BY created_at DESC').all(req.params.id);
+  res.json({ success: true, data: notes });
+});
+
+router.post('/:id/notes', async (req, res) => {
+  const { note } = req.body;
+  if (!note?.trim()) return res.status(400).json({ success: false, error: 'Note required' });
+  const r = await db.prepare('INSERT INTO candidate_notes (candidate_id, user_id, user_name, note) VALUES (?, ?, ?, ?)')
+    .run(req.params.id, req.user.id, req.user.name, note.trim());
+  res.json({ success: true, data: { id: r.lastInsertRowid } });
+});
+
+router.delete('/:id/notes/:noteId', async (req, res) => {
+  await db.prepare('DELETE FROM candidate_notes WHERE id = ? AND candidate_id = ?').run(req.params.noteId, req.params.id);
+  res.json({ success: true, data: { message: 'Deleted' } });
+});
+
+// --- Tags ---
+router.get('/meta/tags', async (_req, res) => {
+  const tags = await db.prepare('SELECT * FROM tags ORDER BY name').all();
+  res.json({ success: true, data: tags });
+});
+
+router.post('/meta/tags', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
+  const { name, color } = req.body;
+  if (!name) return res.status(400).json({ success: false, error: 'Name required' });
+  try {
+    const r = await db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)').run(name, color || '#3b82f6');
+    res.json({ success: true, data: { id: r.lastInsertRowid, name, color: color || '#3b82f6' } });
+  } catch (e) {
+    if (e.message.includes('UNIQUE')) return res.status(409).json({ success: false, error: 'Tag already exists' });
+    throw e;
+  }
+});
+
+router.delete('/meta/tags/:tagId', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
+  await db.prepare('DELETE FROM tags WHERE id = ?').run(req.params.tagId);
+  res.json({ success: true, data: { message: 'Deleted' } });
+});
+
+router.get('/:id/tags', async (req, res) => {
+  const tags = await db.prepare('SELECT t.* FROM tags t JOIN candidate_tags ct ON t.id = ct.tag_id WHERE ct.candidate_id = ?').all(req.params.id);
+  res.json({ success: true, data: tags });
+});
+
+router.post('/:id/tags', async (req, res) => {
+  const { tag_id } = req.body;
+  if (!tag_id) return res.status(400).json({ success: false, error: 'tag_id required' });
+  try {
+    await db.prepare('INSERT INTO candidate_tags (candidate_id, tag_id) VALUES (?, ?)').run(req.params.id, tag_id);
+  } catch { /* already tagged */ }
+  res.json({ success: true, data: { message: 'Tagged' } });
+});
+
+router.delete('/:id/tags/:tagId', async (req, res) => {
+  await db.prepare('DELETE FROM candidate_tags WHERE candidate_id = ? AND tag_id = ?').run(req.params.id, req.params.tagId);
+  res.json({ success: true, data: { message: 'Untagged' } });
+});
+
+// --- Blacklist ---
+router.get('/:id/blacklist', async (req, res) => {
+  const bl = await db.prepare('SELECT * FROM blacklist WHERE candidate_id = ?').get(req.params.id);
+  res.json({ success: true, data: bl || null });
+});
+
+router.post('/:id/blacklist', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
+  const { reason } = req.body;
+  if (!reason) return res.status(400).json({ success: false, error: 'Reason required' });
+  try {
+    await db.prepare('INSERT INTO blacklist (candidate_id, reason, blacklisted_by) VALUES (?, ?, ?)').run(req.params.id, reason, req.user.id);
+  } catch {
+    await db.prepare('UPDATE blacklist SET reason = ?, blacklisted_by = ?, created_at = datetime("now") WHERE candidate_id = ?').run(reason, req.user.id, req.params.id);
+  }
+  res.json({ success: true, data: { message: 'Blacklisted' } });
+});
+
+router.delete('/:id/blacklist', authorize('super_admin', 'admin'), async (req, res) => {
+  await db.prepare('DELETE FROM blacklist WHERE candidate_id = ?').run(req.params.id);
+  res.json({ success: true, data: { message: 'Removed from blacklist' } });
+});
+
 export default router;

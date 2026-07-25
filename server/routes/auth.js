@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import db from '../db/connection.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -41,6 +42,41 @@ router.post('/change-password', authenticate, async (req, res) => {
   const hash = bcrypt.hashSync(new_password, 10);
   await db.prepare('UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?').run(hash, req.user.id);
   res.json({ success: true, data: { message: 'Password changed' } });
+});
+
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, error: 'Email required' });
+  const user = await db.prepare('SELECT id, name, email FROM users WHERE email = ? AND is_active = 1').get(email);
+  if (!user) return res.json({ success: true, data: { message: 'If that email exists, a reset link has been generated' } });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  await db.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expires);
+
+  res.json({ success: true, data: { message: 'If that email exists, a reset link has been generated', reset_token: token } });
+});
+
+router.post('/reset-password', async (req, res) => {
+  const { token, new_password } = req.body;
+  if (!token || !new_password) return res.status(400).json({ success: false, error: 'Token and new password required' });
+
+  const record = await db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > datetime("now")').get(token);
+  if (!record) return res.status(400).json({ success: false, error: 'Invalid or expired reset token' });
+
+  const hash = bcrypt.hashSync(new_password, 10);
+  await db.prepare('UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?').run(hash, record.user_id);
+  await db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(record.id);
+
+  res.json({ success: true, data: { message: 'Password reset successfully' } });
+});
+
+router.post('/admin-reset-password', authenticate, authorize('super_admin'), async (req, res) => {
+  const { user_id, new_password } = req.body;
+  if (!user_id || !new_password) return res.status(400).json({ success: false, error: 'user_id and new_password required' });
+  const hash = bcrypt.hashSync(new_password, 10);
+  await db.prepare('UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?').run(hash, user_id);
+  res.json({ success: true, data: { message: 'Password reset for user' } });
 });
 
 export default router;

@@ -20,6 +20,9 @@ import communicationRoutes from './routes/communications.js';
 import dashboardRoutes from './routes/dashboard.js';
 import uploadRoutes from './routes/upload.js';
 import exportRoutes from './routes/export.js';
+import publicRoutes from './routes/public.js';
+import auditRoutes from './routes/audit.js';
+import analyticsRoutes from './routes/analytics.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -32,6 +35,9 @@ app.use('/uploads', express.static(join(__dirname, 'uploads')));
 // Ensure DB schema + seed exist before handling any API request (cached after first run).
 app.use('/api', (req, res, next) => { ensureReady().then(() => next()).catch(next); });
 
+// Public routes (no auth)
+app.use('/api/public', publicRoutes);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/vacancies', vacancyRoutes);
@@ -41,6 +47,8 @@ app.use('/api/interviews', interviewRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/communications', communicationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/audit', auditRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/export', exportRoutes);
 
@@ -52,6 +60,6 @@ app.use((err, _req, res, _next) => {
 export default app;
 
 if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 3001;
+  const PORT = 3001;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
