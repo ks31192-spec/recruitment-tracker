@@ -3,6 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import SCHEMA_SQL from './schema-string.js';
+import { getDb as getFirestore } from './firebase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const localFile = process.env.VERCEL ? null : join(__dirname, 'recruitment.db');
@@ -66,6 +67,27 @@ const wrapper = {
   pragma() {},
 };
 
+async function saveToFirestore() {
+  const firestore = getFirestore();
+  if (!firestore || !sqlDb) return;
+  try {
+    const blob = Buffer.from(sqlDb.export());
+    await firestore.doc('system/sqlite_db').set({
+      data: blob,
+      size: blob.length,
+      updated_at: new Date(),
+    });
+  } catch (e) {
+    console.error('Firestore save failed:', e.message);
+  }
+}
+
+let saveTimer = null;
+function debouncedFirestoreSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveToFirestore(), 500);
+}
+
 let readyPromise = null;
 export function ensureReady() {
   if (!readyPromise) {
@@ -77,11 +99,23 @@ export function ensureReady() {
         let dbData = null;
         if (localFile && existsSync(localFile)) {
           dbData = readFileSync(localFile);
+        } else {
+          const firestore = getFirestore();
+          if (firestore) {
+            const doc = await firestore.doc('system/sqlite_db').get();
+            if (doc.exists) {
+              const stored = doc.data().data;
+              dbData = Buffer.isBuffer(stored) ? stored : Buffer.from(stored);
+              console.log('Loaded DB from Firestore:', dbData.length, 'bytes');
+            }
+          }
         }
-        sqlDb = dbData ? new SQL.Database(dbData) : new SQL.Database();
+        sqlDb = dbData ? new SQL.Database(new Uint8Array(dbData)) : new SQL.Database();
 
         if (localFile) {
           save = () => { writeFileSync(localFile, Buffer.from(sqlDb.export())); };
+        } else if (getFirestore()) {
+          save = () => { debouncedFirestoreSave(); };
         }
 
         executeMultiple(SCHEMA_SQL);
