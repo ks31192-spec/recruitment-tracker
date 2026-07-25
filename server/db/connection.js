@@ -2,65 +2,46 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import initSqlJs from 'sql.js/dist/sql-asm.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const useTurso = !!process.env.TURSO_DATABASE_URL;
 
-let execute, executeMultiple, closeFn;
+// sql.js (asm.js build) — pure JS SQLite, no native deps.
+// Local dev: persisted to disk file. Vercel: in-memory (reseeds on cold start).
+const localFile = process.env.VERCEL ? null : join(__dirname, 'recruitment.db');
+let dbData = null;
+if (localFile && existsSync(localFile)) {
+  dbData = readFileSync(localFile);
+}
+const SQL = await initSqlJs();
+const sqlDb = dbData ? new SQL.Database(dbData) : new SQL.Database();
 
-if (useTurso) {
-  // Turso HTTP transport — works everywhere, no native deps
-  const { createClient } = await import('@libsql/client');
-  const client = createClient({
-    url: process.env.TURSO_DATABASE_URL,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-    intMode: 'number',
-  });
-  execute = (sql, args) => client.execute({ sql, args });
-  executeMultiple = (sql) => client.executeMultiple(sql);
-} else {
-  // sql.js (asm.js build) — pure JS, no WASM binary to bundle.
-  // Data lives in-memory; persists within a warm function instance.
-  const initSqlJs = (await import('sql.js/dist/sql-asm.js')).default;
-  const localFile = process.env.VERCEL ? null : join(__dirname, 'recruitment.db');
-  let dbData = null;
-  if (localFile && existsSync(localFile)) {
-    dbData = readFileSync(localFile);
-  }
-  const SQL = await initSqlJs();
-  const sqlDb = dbData ? new SQL.Database(dbData) : new SQL.Database();
+const save = localFile ? () => {
+  writeFileSync(localFile, Buffer.from(sqlDb.export()));
+} : () => {};
 
-  // Auto-save to disk for local dev
-  const save = localFile ? () => {
-    const data = sqlDb.export();
-    writeFileSync(localFile, Buffer.from(data));
-  } : () => {};
-
-  execute = async (sql, args = []) => {
-    const stmt = sqlDb.prepare(sql);
-    const params = args.map(a => a === undefined ? null : a);
-    if (/^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|PRAGMA)/i.test(sql)) {
-      stmt.bind(params);
-      stmt.step();
-      stmt.free();
-      save();
-      const info = sqlDb.exec("SELECT last_insert_rowid() as id, changes() as c");
-      const lastId = info[0]?.values[0]?.[0];
-      const changes = info[0]?.values[0]?.[1];
-      return { rows: [], columns: [], lastInsertRowid: lastId, rowsAffected: changes };
-    }
-    stmt.bind(params);
-    const columns = stmt.getColumnNames();
-    const rows = [];
-    while (stmt.step()) rows.push(stmt.get());
-    stmt.free();
-    return { rows, columns, lastInsertRowid: undefined, rowsAffected: 0 };
-  };
-
-  executeMultiple = async (sql) => {
-    sqlDb.run(sql);
+function execute(sql, args = []) {
+  const params = args.map(a => a === undefined ? null : a);
+  if (/^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|PRAGMA)/i.test(sql)) {
+    sqlDb.run(sql, params);
     save();
-  };
+    const info = sqlDb.exec("SELECT last_insert_rowid() as id, changes() as c");
+    const lastId = info[0]?.values[0]?.[0];
+    const changes = info[0]?.values[0]?.[1];
+    return { rows: [], columns: [], lastInsertRowid: lastId, rowsAffected: changes };
+  }
+  const stmt = sqlDb.prepare(sql);
+  stmt.bind(params);
+  const columns = stmt.getColumnNames();
+  const rows = [];
+  while (stmt.step()) rows.push(stmt.get());
+  stmt.free();
+  return { rows, columns, lastInsertRowid: undefined, rowsAffected: 0 };
+}
+
+function executeMultiple(sql) {
+  sqlDb.run(sql);
+  save();
 }
 
 function rowToObj(row, columns) {
@@ -73,24 +54,24 @@ const wrapper = {
   prepare(sql) {
     return {
       async run(...params) {
-        const r = await execute(sql, params);
+        const r = execute(sql, params);
         return {
           lastInsertRowid: r.lastInsertRowid == null ? undefined : Number(r.lastInsertRowid),
           changes: r.rowsAffected,
         };
       },
       async get(...params) {
-        const r = await execute(sql, params);
+        const r = execute(sql, params);
         return r.rows.length ? rowToObj(r.rows[0], r.columns) : null;
       },
       async all(...params) {
-        const r = await execute(sql, params);
+        const r = execute(sql, params);
         return r.rows.map(row => rowToObj(row, r.columns));
       },
     };
   },
   async exec(sql) {
-    await executeMultiple(sql);
+    executeMultiple(sql);
   },
   pragma() {},
 };
@@ -101,7 +82,7 @@ export function ensureReady() {
     readyPromise = (async () => {
       try {
         const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
-        await executeMultiple(schema);
+        executeMultiple(schema);
       } catch (e) {
         console.error('Schema init failed:', e.message);
         readyPromise = null;
@@ -109,21 +90,22 @@ export function ensureReady() {
       }
 
       const hash = bcrypt.hashSync('Admin@123', 10);
-      await execute(
+      execute(
         'INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
         ['Principal', 'admin@amworld.in', hash, 'super_admin']
       );
 
       for (const d of ['Pre-Primary', 'Primary', 'Middle', 'Senior Secondary', 'Administration', 'Support Staff']) {
-        await execute('INSERT OR IGNORE INTO departments (name) VALUES (?)', [d]);
+        execute('INSERT OR IGNORE INTO departments (name) VALUES (?)', [d]);
       }
 
       for (const t of ['PRT', 'TGT', 'PGT', 'Coordinator', 'Head of Department', 'Lab Assistant', 'Librarian', 'Counsellor', 'Sports Coach', 'IT Support', 'Office Assistant', 'Accountant']) {
-        await execute('INSERT OR IGNORE INTO designations (title) VALUES (?)', [t]);
+        execute('INSERT OR IGNORE INTO designations (title) VALUES (?)', [t]);
       }
 
-      await execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2025-26', '2025-04-01', '2026-03-31', 1]);
-      await execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2024-25', '2024-04-01', '2025-03-31', 0]);
+      execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2025-26', '2025-04-01', '2026-03-31', 1]);
+      execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2024-25', '2024-04-01', '2025-03-31', 0]);
+      save();
     })();
   }
   return readyPromise;
