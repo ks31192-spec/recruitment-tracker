@@ -33,7 +33,7 @@ const app = express();
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(join(__dirname, 'uploads')));
+app.use('/uploads', express.static(process.env.VERCEL ? '/tmp/uploads' : join(__dirname, 'uploads')));
 
 app.get('/api/health', async (_req, res) => {
   try {

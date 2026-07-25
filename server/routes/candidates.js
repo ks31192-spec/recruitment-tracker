@@ -7,7 +7,8 @@ import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const resumeUpload = multer({ dest: join(__dirname, '..', 'uploads', 'resumes'), limits: { fileSize: 10 * 1024 * 1024 } });
+const resumeDest = process.env.VERCEL ? '/tmp/uploads/resumes' : join(__dirname, '..', 'uploads', 'resumes');
+const resumeUpload = multer({ dest: resumeDest, limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 router.use(authenticate);

@@ -7,7 +7,7 @@ import db from '../db/connection.js';
 import { authenticate } from '../middleware/auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const uploadsDir = join(__dirname, '..', 'uploads');
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '..', 'uploads');
 
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {

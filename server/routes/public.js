@@ -6,7 +6,7 @@ import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const uploadsDir = join(__dirname, '..', 'uploads');
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '..', 'uploads');
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
