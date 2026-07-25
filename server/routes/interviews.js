@@ -67,4 +67,19 @@ router.get('/schedule/upcoming', async (req, res) => {
   res.json({ success: true, data: rows });
 });
 
+router.get('/schedule/calendar', async (req, res) => {
+  const { month } = req.query;
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+    return res.status(400).json({ success: false, error: 'month query param required in YYYY-MM format' });
+  }
+  const rows = await db.prepare(`SELECT i.*, a.candidate_id, c.full_name, c.phone, v.title as vacancy_title
+    FROM interviews i
+    JOIN applications a ON i.application_id = a.id
+    JOIN candidates c ON a.candidate_id = c.id
+    JOIN vacancies v ON a.vacancy_id = v.id
+    WHERE i.scheduled_date LIKE ?
+    ORDER BY i.scheduled_date, i.scheduled_time`).all(`${month}%`);
+  res.json({ success: true, data: rows });
+});
+
 export default router;

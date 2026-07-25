@@ -57,6 +57,9 @@ export default function Login() {
             <Link to="/forgot-password" className="text-blue-600 hover:underline">Forgot Password?</Link>
             <Link to="/careers" className="text-gray-500 hover:text-gray-700">View Open Positions</Link>
           </div>
+          <div className="text-center mt-2">
+            <Link to="/portal" className="text-sm text-gray-400 hover:text-blue-600">Candidate Portal (Check Application Status)</Link>
+          </div>
         </form>
       </div>
     </div>

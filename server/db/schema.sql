@@ -317,3 +317,69 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   used INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  title TEXT NOT NULL,
+  body TEXT,
+  link TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
+
+-- Referrals
+CREATE TABLE IF NOT EXISTS referrals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  referrer_user_id INTEGER NOT NULL REFERENCES users(id),
+  candidate_name TEXT NOT NULL,
+  candidate_phone TEXT,
+  candidate_email TEXT,
+  resume_path TEXT,
+  vacancy_id INTEGER REFERENCES vacancies(id),
+  status TEXT NOT NULL DEFAULT 'submitted' CHECK(status IN ('submitted','reviewed','shortlisted','hired','rejected')),
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Candidate Portal Tokens (OTP-based)
+CREATE TABLE IF NOT EXISTS candidate_portal_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  candidate_id INTEGER NOT NULL REFERENCES candidates(id),
+  phone TEXT NOT NULL,
+  otp TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Document Checklist per vacancy
+CREATE TABLE IF NOT EXISTS document_checklist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  vacancy_id INTEGER NOT NULL REFERENCES vacancies(id) ON DELETE CASCADE,
+  doc_name TEXT NOT NULL,
+  is_required INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+-- Recruitment Costs
+CREATE TABLE IF NOT EXISTS recruitment_costs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  vacancy_id INTEGER NOT NULL REFERENCES vacancies(id) ON DELETE CASCADE,
+  cost_type TEXT NOT NULL CHECK(cost_type IN ('advertising','agency','travel','assessment','other')),
+  amount REAL NOT NULL,
+  description TEXT,
+  date TEXT NOT NULL DEFAULT (date('now')),
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- SLA Config per stage
+CREATE TABLE IF NOT EXISTS sla_config (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  stage TEXT NOT NULL UNIQUE,
+  max_days INTEGER NOT NULL DEFAULT 7,
+  updated_by INTEGER REFERENCES users(id),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

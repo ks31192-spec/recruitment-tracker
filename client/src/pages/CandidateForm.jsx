@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api.js';
 import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
+import ResumeParser from '../components/ResumeParser.jsx';
 
 const sources = [
   { value: 'walk_in', label: 'Walk-in' }, { value: 'naukri', label: 'Naukri' },
@@ -62,6 +63,14 @@ export default function CandidateForm() {
           </div>
           <p className="text-sm text-amber-700 mt-2">Click Save again to create anyway, or view existing profiles above.</p>
         </div>
+      )}
+
+      {!id && (
+        <ResumeParser onParsed={({ name, phone, email }) => {
+          if (name) set('full_name', name);
+          if (phone) set('phone', phone);
+          if (email) set('email', email);
+        }} />
       )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">

@@ -5,9 +5,11 @@ import { useToast } from '../components/Toast.jsx';
 import ScheduleInterviewModal from '../components/ScheduleInterviewModal.jsx';
 import EvaluationModal from '../components/EvaluationModal.jsx';
 import EvaluationView from '../components/EvaluationView.jsx';
+import StructuredEvaluation from '../components/StructuredEvaluation.jsx';
 import CommunicationModal from '../components/CommunicationModal.jsx';
 import OfferModal from '../components/OfferModal.jsx';
-import { ArrowLeft, Edit, Briefcase, FileText, Phone, Mail, MapPin, Plus, CalendarCheck, MessageCircle, Star, Gift, Upload, Tag, X, ShieldBan, StickyNote, Trash2, Download, ChevronDown } from 'lucide-react';
+import CandidateTimeline from '../components/CandidateTimeline.jsx';
+import { ArrowLeft, Edit, Briefcase, FileText, Phone, Mail, MapPin, Plus, CalendarCheck, MessageCircle, Star, Gift, Upload, Tag, X, ShieldBan, StickyNote, Trash2, Download, ChevronDown, Clock } from 'lucide-react';
 
 const sourceLabels = { walk_in: 'Walk-in', naukri: 'Naukri', whatsapp: 'WhatsApp', referral: 'Referral', website: 'Website', direct_call: 'Direct Call', other: 'Other' };
 const stageColors = {
@@ -36,6 +38,7 @@ export default function CandidateDetail() {
   const [evalView, setEvalView] = useState(null);
   const [commModal, setCommModal] = useState(false);
   const [offerModal, setOfferModal] = useState(null);
+  const [structuredEval, setStructuredEval] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   // Notes state
@@ -439,38 +442,7 @@ export default function CandidateDetail() {
         )}
 
         {tab === 'timeline' && (
-          <div className="space-y-4">
-            {timeline.length === 0 ? <p className="text-sm text-gray-500">No activity yet.</p> : timeline.map((e, i) => (
-              <div key={i} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className={`w-3 h-3 rounded-full mt-1 ${e.type === 'stage_change' ? 'bg-blue-500' : e.type === 'interview' ? 'bg-purple-500' : 'bg-green-500'}`} />
-                  {i < timeline.length - 1 && <div className="w-px flex-1 bg-gray-200 mt-1" />}
-                </div>
-                <div className="pb-4 text-sm flex-1">
-                  {e.type === 'stage_change' && (
-                    <><p className="font-medium text-gray-900">Stage: <span className="capitalize">{e.from_stage?.replace(/_/g, ' ') || 'New'}</span> → <span className="capitalize text-blue-600">{e.to_stage?.replace(/_/g, ' ')}</span></p>
-                    <p className="text-xs text-gray-500">{e.vacancy_title} {e.changed_by_name ? `by ${e.changed_by_name}` : ''}</p></>
-                  )}
-                  {e.type === 'interview' && (
-                    <div>
-                      <p className="font-medium text-gray-900 capitalize">{e.interview_type} — <span className={e.status === 'completed' ? 'text-green-600' : e.status === 'no_show' ? 'text-red-600' : 'text-blue-600'}>{e.status}</span></p>
-                      <p className="text-xs text-gray-500">{e.vacancy_title} on {e.scheduled_date} {e.scheduled_time || ''}</p>
-                      <div className="flex gap-2 mt-1">
-                        <button onClick={() => setEvalModal(e.id)} className="text-xs text-blue-600 hover:underline">Submit Evaluation</button>
-                        <button onClick={() => setEvalView(e.id)} className="text-xs text-purple-600 hover:underline">View Evaluations</button>
-                      </div>
-                    </div>
-                  )}
-                  {e.type === 'communication' && (
-                    <><p className="font-medium text-gray-900 capitalize">{e.comm_type} ({e.direction})</p>
-                    {e.summary && <p className="text-xs text-gray-600">{e.summary}</p>}
-                    {e.outcome && <p className="text-xs text-gray-500">Outcome: {e.outcome}</p>}</>
-                  )}
-                  <p className="text-xs text-gray-400 mt-0.5">{new Date(e.date).toLocaleString()}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <CandidateTimeline candidateId={+id} />
         )}
 
         {tab === 'notes' && (
@@ -550,6 +522,7 @@ export default function CandidateDetail() {
 
       {scheduleModal && <ScheduleInterviewModal applicationId={scheduleModal} onClose={() => setScheduleModal(null)} onDone={() => { toast.success('Interview scheduled'); load(); }} />}
       {evalModal && <EvaluationModal interviewId={evalModal} onClose={() => setEvalModal(null)} onDone={() => { toast.success('Evaluation submitted'); load(); }} />}
+      {structuredEval && <StructuredEvaluation interviewId={structuredEval} onClose={() => setStructuredEval(null)} onDone={() => { toast.success('Evaluation submitted'); load(); }} />}
       {evalView && <EvaluationView interviewId={evalView} onClose={() => setEvalView(null)} />}
       {commModal && <CommunicationModal candidateId={+id} onClose={() => setCommModal(false)} onDone={() => { toast.success('Communication logged'); load(); }} />}
       {offerModal && <OfferModal applicationId={offerModal} onClose={() => setOfferModal(null)} onDone={() => { toast.success('Offer created'); load(); }} />}

@@ -147,4 +147,54 @@ router.get('/:id/eligibility', async (req, res) => {
   res.json({ success: true, data: results });
 });
 
+// --- Document Checklist ---
+
+router.get('/:id/document-checklist', async (req, res) => {
+  const items = await db.prepare('SELECT * FROM document_checklist WHERE vacancy_id = ? ORDER BY sort_order').all(req.params.id);
+  res.json({ success: true, data: items });
+});
+
+router.post('/:id/document-checklist', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
+  const { doc_name, is_required } = req.body;
+  if (!doc_name) return res.status(400).json({ success: false, error: 'doc_name required' });
+  const maxOrder = (await db.prepare('SELECT MAX(sort_order) as m FROM document_checklist WHERE vacancy_id = ?').get(req.params.id))?.m || 0;
+  const r = await db.prepare('INSERT INTO document_checklist (vacancy_id, doc_name, is_required, sort_order) VALUES (?, ?, ?, ?)')
+    .run(req.params.id, doc_name, is_required != null ? (is_required ? 1 : 0) : 1, maxOrder + 1);
+  res.json({ success: true, data: { id: r.lastInsertRowid } });
+});
+
+router.delete('/:id/document-checklist/:itemId', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
+  await db.prepare('DELETE FROM document_checklist WHERE id = ? AND vacancy_id = ?').run(req.params.itemId, req.params.id);
+  res.json({ success: true, data: { message: 'Deleted' } });
+});
+
+// --- Recruitment Costs ---
+
+router.get('/:id/costs', async (req, res) => {
+  const costs = await db.prepare(`SELECT rc.*, u.name as created_by_name FROM recruitment_costs rc
+    LEFT JOIN users u ON rc.created_by = u.id WHERE rc.vacancy_id = ? ORDER BY rc.date DESC`).all(req.params.id);
+  res.json({ success: true, data: costs });
+});
+
+router.post('/:id/costs', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
+  const { cost_type, amount, description, date } = req.body;
+  if (!cost_type || amount == null) return res.status(400).json({ success: false, error: 'cost_type and amount required' });
+  const r = await db.prepare('INSERT INTO recruitment_costs (vacancy_id, cost_type, amount, description, date, created_by) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(req.params.id, cost_type, amount, description || null, date || new Date().toISOString().slice(0, 10), req.user.id);
+  res.json({ success: true, data: { id: r.lastInsertRowid } });
+});
+
+router.delete('/:id/costs/:costId', authorize('super_admin', 'admin'), async (req, res) => {
+  await db.prepare('DELETE FROM recruitment_costs WHERE id = ? AND vacancy_id = ?').run(req.params.costId, req.params.id);
+  res.json({ success: true, data: { message: 'Deleted' } });
+});
+
+router.get('/:id/cost-summary', async (req, res) => {
+  const total = (await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM recruitment_costs WHERE vacancy_id = ?').get(req.params.id))?.total || 0;
+  const breakdown = await db.prepare('SELECT cost_type, SUM(amount) as total FROM recruitment_costs WHERE vacancy_id = ? GROUP BY cost_type').all(req.params.id);
+  const joined = (await db.prepare(`SELECT COUNT(*) as c FROM applications WHERE vacancy_id = ? AND current_stage = 'joined'`).get(req.params.id))?.c || 0;
+  const costPerHire = joined > 0 ? Math.round((total / joined) * 100) / 100 : null;
+  res.json({ success: true, data: { total, breakdown, joined_count: joined, cost_per_hire: costPerHire } });
+});
+
 export default router;

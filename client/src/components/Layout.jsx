@@ -1,15 +1,20 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { LayoutDashboard, Briefcase, Users, CalendarCheck, Bell, BarChart3, Shield, Settings, LogOut, Menu, Search, Globe } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, CalendarCheck, Calendar, Bell, BarChart3, Columns3, FileText, Shield, Settings, LogOut, Menu, Search, Globe, UserPlus } from 'lucide-react';
 import { useState } from 'react';
+import NotificationBell from './NotificationBell.jsx';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/vacancies', icon: Briefcase, label: 'Vacancies' },
   { to: '/candidates', icon: Users, label: 'Candidates' },
   { to: '/interviews', icon: CalendarCheck, label: 'Interviews' },
+  { to: '/interviews/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/follow-ups', icon: Bell, label: 'Follow-ups' },
+  { to: '/referrals', icon: UserPlus, label: 'Referrals' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/kanban', icon: Columns3, label: 'Kanban Board' },
+  { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/audit-log', icon: Shield, label: 'Audit Log', roles: ['super_admin', 'admin'] },
   { to: '/settings', icon: Settings, label: 'Settings', roles: ['super_admin', 'admin'] },
 ];
@@ -55,9 +60,14 @@ export default function Layout() {
           </a>
         </nav>
         <div className="p-3 border-t border-gray-200">
-          <div className="px-3 py-2 mb-2">
-            <p className="text-sm font-medium text-gray-800 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-500 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
+          <div className="px-3 py-2 mb-2 flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{user?.name}</p>
+              <p className="text-xs text-gray-500 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
+            </div>
+            <div className="hidden lg:block">
+              <NotificationBell />
+            </div>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors">
             <LogOut size={16} /> Logout
@@ -70,7 +80,8 @@ export default function Layout() {
           <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-gray-100">
             <Menu size={20} />
           </button>
-          <span className="ml-3 font-semibold text-blue-700">Recruitment Tracker</span>
+          <span className="ml-3 font-semibold text-blue-700 flex-1">Recruitment Tracker</span>
+          <NotificationBell />
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <Outlet />

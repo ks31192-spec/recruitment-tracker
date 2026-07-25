@@ -23,6 +23,9 @@ import exportRoutes from './routes/export.js';
 import publicRoutes from './routes/public.js';
 import auditRoutes from './routes/audit.js';
 import analyticsRoutes from './routes/analytics.js';
+import notificationRoutes from './routes/notifications.js';
+import referralRoutes from './routes/referrals.js';
+import portalRoutes from './routes/portal.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -37,6 +40,7 @@ app.use('/api', (req, res, next) => { ensureReady().then(() => next()).catch(nex
 
 // Public routes (no auth)
 app.use('/api/public', publicRoutes);
+app.use('/api/portal', portalRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
@@ -49,6 +53,8 @@ app.use('/api/communications', communicationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/referrals', referralRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/export', exportRoutes);
 
