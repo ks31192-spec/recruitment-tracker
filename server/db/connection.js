@@ -1,8 +1,9 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import initSqlJs from 'sql.js/dist/sql-asm.js';
+import SCHEMA_SQL from './schema-string.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -81,8 +82,7 @@ export function ensureReady() {
   if (!readyPromise) {
     readyPromise = (async () => {
       try {
-        const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
-        executeMultiple(schema);
+        executeMultiple(SCHEMA_SQL);
       } catch (e) {
         console.error('Schema init failed:', e.message);
         readyPromise = null;
