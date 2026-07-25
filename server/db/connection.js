@@ -10,11 +10,13 @@ const localFile = process.env.VERCEL ? null : join(__dirname, 'recruitment.db');
 
 let sqlDb = null;
 let save = () => {};
+let dirty = false;
 
 function execute(sql, args = []) {
   const params = args.map(a => a === undefined ? null : a);
   if (/^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|PRAGMA)/i.test(sql)) {
     sqlDb.run(sql, params);
+    dirty = true;
     save();
     const info = sqlDb.exec("SELECT last_insert_rowid() as id, changes() as c");
     const lastId = info[0]?.values[0]?.[0];
@@ -41,11 +43,31 @@ function rowToObj(row, columns) {
   return o;
 }
 
+let pendingSave = null;
+async function flushToFirestore() {
+  if (!dirty) return;
+  const firestore = getFirestore();
+  if (!firestore || !sqlDb) return;
+  dirty = false;
+  try {
+    const blob = Buffer.from(sqlDb.export());
+    await firestore.doc('system/sqlite_db').set({
+      data: blob,
+      size: blob.length,
+      updated_at: new Date(),
+    });
+  } catch (e) {
+    dirty = true;
+    console.error('Firestore save failed:', e.message);
+  }
+}
+
 const wrapper = {
   prepare(sql) {
     return {
       async run(...params) {
         const r = execute(sql, params);
+        await flushToFirestore();
         return {
           lastInsertRowid: r.lastInsertRowid == null ? undefined : Number(r.lastInsertRowid),
           changes: r.rowsAffected,
@@ -66,27 +88,6 @@ const wrapper = {
   },
   pragma() {},
 };
-
-async function saveToFirestore() {
-  const firestore = getFirestore();
-  if (!firestore || !sqlDb) return;
-  try {
-    const blob = Buffer.from(sqlDb.export());
-    await firestore.doc('system/sqlite_db').set({
-      data: blob,
-      size: blob.length,
-      updated_at: new Date(),
-    });
-  } catch (e) {
-    console.error('Firestore save failed:', e.message);
-  }
-}
-
-let saveTimer = null;
-function debouncedFirestoreSave() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => saveToFirestore(), 500);
-}
 
 let readyPromise = null;
 export function ensureReady() {
@@ -114,8 +115,6 @@ export function ensureReady() {
 
         if (localFile) {
           save = () => { writeFileSync(localFile, Buffer.from(sqlDb.export())); };
-        } else if (getFirestore()) {
-          save = () => { debouncedFirestoreSave(); };
         }
 
         executeMultiple(SCHEMA_SQL);
@@ -142,6 +141,7 @@ export function ensureReady() {
       execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2025-26', '2025-04-01', '2026-03-31', 1]);
       execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2024-25', '2024-04-01', '2025-03-31', 0]);
       save();
+      await flushToFirestore();
     })();
   }
   return readyPromise;
