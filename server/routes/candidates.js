@@ -40,6 +40,32 @@ async function insertExperience(candidateId, exps) {
   }
 }
 
+// Aadhar is stored full but only ever returned masked, except via the audited reveal endpoint.
+function maskAadhar(num) {
+  if (!num) return null;
+  const s = String(num).replace(/\s/g, '');
+  if (s.length < 4) return 'XXXX';
+  return 'XXXX XXXX ' + s.slice(-4);
+}
+
+// Default document-verification checklist seeded on a candidate's first view.
+const DEFAULT_VERIFICATION_ITEMS = [
+  'Aadhar Card', '10th Certificate', '12th Certificate', 'Graduation Certificate',
+  'Post-Graduation Certificate', 'B.Ed / D.El.Ed Certificate', 'Experience / Relieving Letters',
+  'Photo ID (PAN / Passport / DL)', 'Address Proof', 'Police Verification',
+  'POCSO / Background Check', 'Reference Check',
+];
+
+function parseVerifications(raw) {
+  if (!raw) return DEFAULT_VERIFICATION_ITEMS.map(item => ({ item, status: 'pending', notes: '', verified_by_name: null, verified_at: null }));
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : DEFAULT_VERIFICATION_ITEMS.map(item => ({ item, status: 'pending', notes: '', verified_by_name: null, verified_at: null }));
+  } catch {
+    return DEFAULT_VERIFICATION_ITEMS.map(item => ({ item, status: 'pending', notes: '', verified_by_name: null, verified_at: null }));
+  }
+}
+
 // Validate the mandatory fields shared by school-add and public-apply flows.
 function validateMandatory({ expected_salary, aadhar_number, current_salary, is_fresher }) {
   if (expected_salary == null || expected_salary === '') return 'Expected salary is required';
@@ -121,7 +147,8 @@ router.get('/', async (req, res) => {
   const total = (await db.prepare(countSql).get(...params))?.total || 0;
   sql += ' ORDER BY c.created_at DESC LIMIT ? OFFSET ?';
   params.push(limit, offset);
-  res.json({ success: true, data: { candidates: await db.prepare(sql).all(...params), total, page: +page, pages: Math.ceil(total / limit) } });
+  const candidates = (await db.prepare(sql).all(...params)).map(c => ({ ...c, aadhar_number: maskAadhar(c.aadhar_number) }));
+  res.json({ success: true, data: { candidates, total, page: +page, pages: Math.ceil(total / limit) } });
 });
 
 router.get('/duplicates-check', async (req, res) => {
@@ -386,6 +413,10 @@ router.get('/ai-rank/:vacancyId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const c = await db.prepare('SELECT * FROM candidates WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).json({ success: false, error: 'Not found' });
+  c.verification_items = parseVerifications(c.verifications);
+  delete c.verifications;
+  c.aadhar_number = maskAadhar(c.aadhar_number);
+  c.can_reveal_aadhar = ['super_admin', 'admin'].includes(req.user.role);
   c.qualifications = await db.prepare('SELECT * FROM candidate_qualifications WHERE candidate_id = ?').all(c.id);
   c.experience = await db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(c.id);
   c.applications = await db.prepare(`SELECT a.*, v.title as vacancy_title, v.subject, d.name as department_name
@@ -393,6 +424,41 @@ router.get('/:id', async (req, res) => {
     WHERE a.candidate_id = ? ORDER BY a.applied_date DESC`).all(c.id);
   c.documents = await db.prepare('SELECT * FROM documents WHERE candidate_id = ?').all(c.id);
   res.json({ success: true, data: c });
+});
+
+// Reveal the full Aadhar number — restricted + audit-logged.
+router.get('/:id/aadhar', authorize('super_admin', 'admin'), async (req, res) => {
+  const c = await db.prepare('SELECT full_name, aadhar_number FROM candidates WHERE id = ?').get(req.params.id);
+  if (!c) return res.status(404).json({ success: false, error: 'Not found' });
+  await db.prepare('INSERT INTO audit_log (user_id, user_name, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(req.user.id, req.user.name, 'view_aadhar', 'candidate', +req.params.id, `Viewed Aadhar of ${c.full_name}`);
+  res.json({ success: true, data: { aadhar_number: c.aadhar_number || null } });
+});
+
+// Document-verification checklist
+router.get('/:id/verifications', async (req, res) => {
+  const c = await db.prepare('SELECT verifications FROM candidates WHERE id = ?').get(req.params.id);
+  if (!c) return res.status(404).json({ success: false, error: 'Not found' });
+  res.json({ success: true, data: parseVerifications(c.verifications) });
+});
+
+router.put('/:id/verifications', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
+  const { verifications } = req.body;
+  if (!Array.isArray(verifications)) return res.status(400).json({ success: false, error: 'verifications array required' });
+  const now = new Date().toISOString();
+  // Stamp who/when for items that have a decided status.
+  const stamped = verifications.map(v => {
+    const decided = v.status === 'verified' || v.status === 'flagged';
+    return {
+      item: v.item,
+      status: v.status || 'pending',
+      notes: v.notes || '',
+      verified_by_name: decided ? (v.verified_by_name || req.user.name) : null,
+      verified_at: decided ? (v.verified_at || now) : null,
+    };
+  });
+  await db.prepare(`UPDATE candidates SET verifications = ?, updated_at = datetime('now') WHERE id = ?`).run(JSON.stringify(stamped), req.params.id);
+  res.json({ success: true, data: stamped });
 });
 
 router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
@@ -423,10 +489,16 @@ router.put('/:id', authorize('super_admin', 'admin', 'hr'), async (req, res) => 
   const { full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state,
     current_salary, expected_salary, aadhar_number, oasis_id, is_fresher, source, referrer_name, notes, qualifications, experience } = req.body;
 
-  const validationError = validateMandatory({ expected_salary, aadhar_number, current_salary, is_fresher });
+  // Blank aadhar on edit means "keep existing" (the form only ever shows a masked value).
+  let aadhar = aadhar_number ? String(aadhar_number).replace(/\s/g, '') : null;
+  if (!aadhar) {
+    const existing = await db.prepare('SELECT aadhar_number FROM candidates WHERE id = ?').get(req.params.id);
+    aadhar = existing?.aadhar_number || null;
+  }
+
+  const validationError = validateMandatory({ expected_salary, aadhar_number: aadhar, current_salary, is_fresher });
   if (validationError) return res.status(400).json({ success: false, error: validationError });
 
-  const aadhar = aadhar_number ? String(aadhar_number).replace(/\s/g, '') : null;
   await db.prepare(`UPDATE candidates SET full_name=?, father_or_husband_name=?, gender=?, date_of_birth=?, phone=?, whatsapp_number=?, email=?, current_city=?, current_state=?, current_salary=?, expected_salary=?, aadhar_number=?, oasis_id=?, is_fresher=?, source=?, referrer_name=?, notes=?, updated_at=datetime('now') WHERE id=?`)
     .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, is_fresher ? null : (current_salary || null), expected_salary || null, aadhar, oasis_id || null, is_fresher ? 1 : 0, source || null, referrer_name || null, notes || null, req.params.id);
 

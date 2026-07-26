@@ -197,6 +197,63 @@ router.get('/:id/cost-summary', async (req, res) => {
   res.json({ success: true, data: { total, breakdown, joined_count: joined, cost_per_hire: costPerHire } });
 });
 
+// Side-by-side comparison of all applicants for a vacancy.
+router.get('/:id/compare', async (req, res) => {
+  const apps = await db.prepare(`SELECT a.id as application_id, a.candidate_id, a.current_stage, a.applied_date,
+    c.full_name, c.phone, c.current_city, c.current_salary, c.expected_salary, c.is_fresher, c.verifications,
+    (SELECT 1 FROM blacklist bl WHERE bl.candidate_id = c.id) as is_blacklisted
+    FROM applications a JOIN candidates c ON a.candidate_id = c.id
+    WHERE a.vacancy_id = ? ORDER BY a.applied_date DESC`).all(req.params.id);
+
+  const results = [];
+  for (const app of apps) {
+    const quals = await db.prepare('SELECT degree, specialization, university, year_of_passing, percentage_or_cgpa, is_appearing FROM candidate_qualifications WHERE candidate_id = ?').all(app.candidate_id);
+    const exps = await db.prepare('SELECT from_date, to_date, subjects_taught FROM candidate_experience WHERE candidate_id = ?').all(app.candidate_id);
+
+    let totalYears = 0;
+    const subjects = new Set();
+    for (const e of exps) {
+      if (e.from_date) {
+        const end = e.to_date ? new Date(e.to_date) : new Date();
+        totalYears += (end - new Date(e.from_date)) / (365.25 * 24 * 60 * 60 * 1000);
+      }
+      if (e.subjects_taught) e.subjects_taught.split(/[,;]/).forEach(s => s.trim() && subjects.add(s.trim()));
+    }
+
+    const scoreRow = await db.prepare(`SELECT AVG(ev.overall_impression) as avg_score, COUNT(ev.id) as n
+      FROM evaluations ev JOIN interviews i ON ev.interview_id = i.id
+      WHERE i.application_id = ?`).get(app.application_id);
+
+    let verifiedCount = 0, verTotal = 0;
+    try {
+      const vers = app.verifications ? JSON.parse(app.verifications) : [];
+      verTotal = vers.length;
+      verifiedCount = vers.filter(v => v.status === 'verified').length;
+    } catch { /* ignore */ }
+
+    results.push({
+      application_id: app.application_id,
+      candidate_id: app.candidate_id,
+      full_name: app.full_name,
+      phone: app.phone,
+      current_city: app.current_city,
+      current_stage: app.current_stage,
+      is_blacklisted: !!app.is_blacklisted,
+      is_fresher: !!app.is_fresher,
+      current_salary: app.current_salary,
+      expected_salary: app.expected_salary,
+      total_experience_years: Math.round(totalYears * 10) / 10,
+      subjects: [...subjects],
+      qualifications: quals,
+      avg_eval_score: scoreRow?.avg_score != null ? Math.round(scoreRow.avg_score * 10) / 10 : null,
+      eval_count: scoreRow?.n || 0,
+      verified_count: verifiedCount,
+      verification_total: verTotal,
+    });
+  }
+  res.json({ success: true, data: results });
+});
+
 router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
   const v = await db.prepare('SELECT id FROM vacancies WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ success: false, error: 'Not found' });

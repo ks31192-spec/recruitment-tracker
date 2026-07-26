@@ -158,6 +158,7 @@ export function ensureReady() {
           ['candidates', 'aadhar_number', 'TEXT'],
           ['candidates', 'oasis_id', 'TEXT'],
           ['candidates', 'is_fresher', 'INTEGER DEFAULT 0'],
+          ['candidates', 'verifications', 'TEXT'],
           ['candidate_qualifications', 'is_appearing', 'INTEGER DEFAULT 0'],
           ['candidate_experience', 'subjects_taught', 'TEXT'],
           ['candidate_experience', 'other_roles', 'TEXT'],

@@ -9,7 +9,7 @@ import StructuredEvaluation from '../components/StructuredEvaluation.jsx';
 import CommunicationModal from '../components/CommunicationModal.jsx';
 import OfferModal from '../components/OfferModal.jsx';
 import CandidateTimeline from '../components/CandidateTimeline.jsx';
-import { ArrowLeft, Edit, Briefcase, FileText, Phone, Mail, MapPin, Plus, CalendarCheck, MessageCircle, Star, Gift, Upload, Tag, X, ShieldBan, StickyNote, Trash2, Download, ChevronDown, Clock } from 'lucide-react';
+import { ArrowLeft, Edit, Briefcase, FileText, Phone, Mail, MapPin, Plus, CalendarCheck, MessageCircle, Star, Gift, Upload, Tag, X, ShieldBan, StickyNote, Trash2, Download, ChevronDown, Clock, Eye, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
 
 const sourceLabels = { walk_in: 'Walk-in', naukri: 'Naukri', whatsapp: 'WhatsApp', referral: 'Referral', website: 'Website', direct_call: 'Direct Call', other: 'Other' };
 const stageColors = {
@@ -62,9 +62,41 @@ export default function CandidateDetail() {
   const [blacklistReason, setBlacklistReason] = useState('');
   const [blacklisting, setBlacklisting] = useState(false);
 
+  // Aadhar reveal + verification state
+  const [revealedAadhar, setRevealedAadhar] = useState(null);
+  const [verifications, setVerifications] = useState([]);
+  const [savingVer, setSavingVer] = useState(false);
+
   const load = () => {
-    api.get(`/candidates/${id}`).then(r => setCandidate(r.data.data));
+    api.get(`/candidates/${id}`).then(r => {
+      setCandidate(r.data.data);
+      setVerifications(r.data.data.verification_items || []);
+      setRevealedAadhar(null);
+    });
     api.get(`/candidates/${id}/timeline`).then(r => setTimeline(r.data.data));
+  };
+
+  const handleRevealAadhar = async () => {
+    try {
+      const r = await api.get(`/candidates/${id}/aadhar`);
+      setRevealedAadhar(r.data.data.aadhar_number || '—');
+    } catch { toast.error('Not permitted to view Aadhar'); }
+  };
+
+  const setVerStatus = (idx, status) => {
+    setVerifications(vs => vs.map((v, i) => i === idx ? { ...v, status } : v));
+  };
+  const setVerNotes = (idx, notes) => {
+    setVerifications(vs => vs.map((v, i) => i === idx ? { ...v, notes } : v));
+  };
+  const saveVerifications = async () => {
+    setSavingVer(true);
+    try {
+      const r = await api.put(`/candidates/${id}/verifications`, { verifications });
+      setVerifications(r.data.data);
+      toast.success('Verification status saved');
+    } catch { toast.error('Failed to save'); }
+    finally { setSavingVer(false); }
   };
 
   const loadTags = () => {
@@ -230,7 +262,8 @@ export default function CandidateDetail() {
 
   if (!candidate) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
 
-  const tabs = ['overview', 'applications', 'qualifications', 'experience', 'documents', 'timeline', 'notes'];
+  const tabs = ['overview', 'applications', 'qualifications', 'experience', 'verification', 'documents', 'timeline', 'notes'];
+  const verifiedCount = verifications.filter(v => v.status === 'verified').length;
   const interviews = timeline.filter(e => e.type === 'interview');
 
   // Tags not yet assigned to this candidate
@@ -354,9 +387,21 @@ export default function CandidateDetail() {
             <div className="space-y-3">
               <h3 className="font-semibold text-gray-900">Personal Details</h3>
               <dl className="space-y-2 text-sm">
-                {[['Father/Husband', candidate.father_or_husband_name], ['Gender', candidate.gender], ['DOB', candidate.date_of_birth], ['WhatsApp', candidate.whatsapp_number], ['State', candidate.current_state], ['Aadhar', candidate.aadhar_number], ['Oasis ID', candidate.oasis_id], ['Source', sourceLabels[candidate.source] || candidate.source]].filter(([, v]) => v).map(([k, v]) => (
+                {[['Father/Husband', candidate.father_or_husband_name], ['Gender', candidate.gender], ['DOB', candidate.date_of_birth], ['WhatsApp', candidate.whatsapp_number], ['State', candidate.current_state], ['Oasis ID', candidate.oasis_id], ['Source', sourceLabels[candidate.source] || candidate.source]].filter(([, v]) => v).map(([k, v]) => (
                   <div key={k} className="flex"><dt className="w-36 text-gray-500">{k}</dt><dd className="text-gray-900 capitalize">{v}</dd></div>
                 ))}
+                {candidate.aadhar_number && (
+                  <div className="flex items-center"><dt className="w-36 text-gray-500">Aadhar</dt>
+                    <dd className="text-gray-900 flex items-center gap-2">
+                      <span className="font-mono">{revealedAadhar || candidate.aadhar_number}</span>
+                      {candidate.can_reveal_aadhar && !revealedAadhar && (
+                        <button onClick={handleRevealAadhar} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline" title="Reveal (logged)">
+                          <Eye size={12} /> Reveal
+                        </button>
+                      )}
+                    </dd>
+                  </div>
+                )}
                 {candidate.referrer_name && <div className="flex"><dt className="w-36 text-gray-500">Referrer</dt><dd className="text-gray-900">{candidate.referrer_name}</dd></div>}
               </dl>
             </div>
@@ -433,6 +478,46 @@ export default function CandidateDetail() {
                 {exp.reason_for_leaving && <p className="text-xs text-gray-400 mt-1">Left: {exp.reason_for_leaving}</p>}
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === 'verification' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={18} className="text-gray-400" />
+                <span className="text-sm text-gray-600">{verifiedCount} of {verifications.length} verified</span>
+              </div>
+              <button onClick={saveVerifications} disabled={savingVer}
+                className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                {savingVer ? 'Saving...' : 'Save Verification Status'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {verifications.map((v, i) => (
+                <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border border-gray-100 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{v.item}</p>
+                    {v.verified_at && (v.status === 'verified' || v.status === 'flagged') && (
+                      <p className="text-xs text-gray-400 mt-0.5">{v.verified_by_name} · {new Date(v.verified_at).toLocaleDateString('en-IN')}</p>
+                    )}
+                  </div>
+                  <input value={v.notes || ''} onChange={e => setVerNotes(i, e.target.value)} placeholder="Notes (optional)"
+                    className="text-sm px-2 py-1.5 border border-gray-200 rounded-lg sm:w-48 focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <div className="flex gap-1 shrink-0">
+                    {[['verified', 'Verified', CheckCircle2, 'green'], ['pending', 'Pending', Clock, 'gray'], ['flagged', 'Flagged', XCircle, 'red']].map(([status, label, Icon, color]) => (
+                      <button key={status} onClick={() => setVerStatus(i, status)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                          v.status === status
+                            ? (color === 'green' ? 'bg-green-100 text-green-700 border-green-300' : color === 'red' ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-200 text-gray-700 border-gray-300')
+                            : 'border-gray-200 text-gray-400 hover:bg-gray-50'}`}>
+                        <Icon size={13} /> {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

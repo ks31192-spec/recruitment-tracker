@@ -285,6 +285,79 @@ function EligibilitySection({ vacancyId }) {
   );
 }
 
+function CompareSection({ vacancyId }) {
+  const toast = useToast();
+  const [rows, setRows] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await api.get(`/vacancies/${vacancyId}/compare`);
+      setRows(r.data.data || []);
+    } catch { toast.error('Failed to load comparison'); }
+    setLoading(false);
+  };
+
+  const money = (n) => n ? `₹${Number(n).toLocaleString('en-IN')}` : '—';
+
+  const attrs = [
+    ['Stage', r => <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${stageColors[r.current_stage] || 'bg-gray-100 text-gray-600'}`}>{r.current_stage.replace(/_/g, ' ')}</span>],
+    ['City', r => r.current_city || '—'],
+    ['Experience', r => r.is_fresher ? <span className="text-blue-600">Fresher</span> : `${r.total_experience_years} yr`],
+    ['Qualifications', r => r.qualifications.length ? r.qualifications.map(q => q.degree).filter(Boolean).join(', ') || '—' : '—'],
+    ['Subjects', r => r.subjects.length ? r.subjects.join(', ') : '—'],
+    ['Current Salary', r => money(r.current_salary)],
+    ['Expected Salary', r => money(r.expected_salary)],
+    ['Interview Score', r => r.avg_eval_score != null ? <span className="font-medium">{r.avg_eval_score}/10 <span className="text-xs text-gray-400">({r.eval_count})</span></span> : '—'],
+    ['Docs Verified', r => r.verification_total ? `${r.verified_count}/${r.verification_total}` : '—'],
+  ];
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Compare Applicants</h2>
+        <button onClick={load} disabled={loading} className="flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          {loading ? <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" /> : <Users size={14} />}
+          {loading ? 'Loading...' : rows ? 'Refresh' : 'Compare Applicants'}
+        </button>
+      </div>
+      {rows === null ? (
+        <p className="text-sm text-gray-500 text-center py-4">Click "Compare Applicants" to see all candidates side by side.</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center py-4">No applicants to compare.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="text-sm border-collapse min-w-max">
+            <thead>
+              <tr>
+                <th className="sticky left-0 bg-white text-left text-xs font-semibold text-gray-400 uppercase px-3 py-2 border-b border-gray-200">Attribute</th>
+                {rows.map(r => (
+                  <th key={r.candidate_id} className="text-left px-3 py-2 border-b border-gray-200 min-w-[160px]">
+                    <Link to={`/candidates/${r.candidate_id}`} className="font-semibold text-gray-900 hover:text-blue-600">{r.full_name}</Link>
+                    {r.is_blacklisted && <span className="ml-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 rounded-full"><ShieldAlert size={9} /> BL</span>}
+                    <p className="text-xs text-gray-400 font-normal">{r.phone}</p>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {attrs.map(([label, render]) => (
+                <tr key={label} className="hover:bg-gray-50">
+                  <td className="sticky left-0 bg-white text-xs font-medium text-gray-500 px-3 py-2.5 border-b border-gray-100 whitespace-nowrap">{label}</td>
+                  {rows.map(r => (
+                    <td key={r.candidate_id} className="px-3 py-2.5 border-b border-gray-100 text-gray-800 align-top">{render(r)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VacancyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -434,6 +507,9 @@ export default function VacancyDetail() {
           </div>
         )}
       </div>
+
+      {/* Compare Applicants */}
+      <CompareSection vacancyId={id} />
 
       {/* Screening Questions */}
       <ScreeningQuestionsSection vacancyId={id} />

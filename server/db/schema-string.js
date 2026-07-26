@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS candidates (
   aadhar_number TEXT,
   oasis_id TEXT,
   is_fresher INTEGER NOT NULL DEFAULT 0,
+  verifications TEXT,
   source TEXT CHECK(source IN ('walk_in','naukri','whatsapp','referral','website','direct_call','other')),
   referrer_name TEXT,
   notes TEXT,

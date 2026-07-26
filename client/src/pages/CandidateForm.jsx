@@ -31,6 +31,7 @@ export default function CandidateForm() {
   const [duplicates, setDuplicates] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [aadharOnFile, setAadharOnFile] = useState('');
 
   useEffect(() => {
     if (id) api.get(`/candidates/${id}`).then(r => {
@@ -39,9 +40,10 @@ export default function CandidateForm() {
         full_name: c.full_name || '', father_or_husband_name: c.father_or_husband_name || '', gender: c.gender || '',
         date_of_birth: c.date_of_birth || '', phone: c.phone || '', whatsapp_number: c.whatsapp_number || '', email: c.email || '',
         current_city: c.current_city || '', current_state: c.current_state || '', current_salary: c.current_salary || '',
-        expected_salary: c.expected_salary || '', aadhar_number: c.aadhar_number || '', oasis_id: c.oasis_id || '',
+        expected_salary: c.expected_salary || '', aadhar_number: '', oasis_id: c.oasis_id || '',
         is_fresher: !!c.is_fresher, source: c.source || '', referrer_name: c.referrer_name || '', notes: c.notes || '',
       });
+      setAadharOnFile(c.aadhar_number || '');
       if (c.qualifications?.length) setQualifications(c.qualifications.map(q => ({
         degree: q.degree || '', specialization: q.specialization || '', university: q.university || '',
         year_of_passing: q.year_of_passing || '', percentage_or_cgpa: q.percentage_or_cgpa || '', is_appearing: !!q.is_appearing,
@@ -69,6 +71,8 @@ export default function CandidateForm() {
     if (form.expected_salary === '' || form.expected_salary == null) return 'Expected salary is required';
     if (!form.is_fresher && (form.current_salary === '' || form.current_salary == null)) return 'Current salary is required (or mark as Fresher)';
     const aadhar = String(form.aadhar_number).replace(/\s/g, '');
+    // On edit, a blank field keeps the Aadhar already on file.
+    if (id && aadharOnFile && aadhar === '') return null;
     if (!/^\d{12}$/.test(aadhar)) return 'A valid 12-digit Aadhar number is required';
     return null;
   };
@@ -173,7 +177,9 @@ export default function CandidateForm() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number *</label>
-              <input value={form.aadhar_number} onChange={e => set('aadhar_number', e.target.value.replace(/[^\d\s]/g, ''))} maxLength={14} placeholder="12-digit number" className={inputCls} />
+              <input value={form.aadhar_number} onChange={e => set('aadhar_number', e.target.value.replace(/[^\d\s]/g, ''))} maxLength={14}
+                placeholder={aadharOnFile ? `On file: ${aadharOnFile}` : '12-digit number'} className={inputCls} />
+              {id && aadharOnFile && <p className="text-xs text-gray-400 mt-1">Leave blank to keep the Aadhar on file. Enter a new 12-digit number to change it.</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Oasis ID</label>
