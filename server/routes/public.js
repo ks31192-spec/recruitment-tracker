@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db/connection.js';
+import { insertQualifications, insertExperience } from './candidates.js';
 import multer from 'multer';
 import { existsSync, mkdirSync } from 'fs';
 import { join, dirname, extname } from 'path';
@@ -51,29 +52,46 @@ router.get('/careers/:id', async (req, res) => {
 
 router.post('/apply/:vacancyId', upload.single('resume'), async (req, res) => {
   const { vacancyId } = req.params;
-  const { full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, salary_expected, earliest_join_date, screening_answers } = req.body;
+  const { full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state,
+    current_salary, expected_salary, aadhar_number, oasis_id, is_fresher, salary_expected, earliest_join_date, screening_answers } = req.body;
 
   if (!full_name) return res.status(400).json({ success: false, error: 'Full name is required' });
 
+  // Mandatory fields
+  const fresher = is_fresher === 'true' || is_fresher === true || is_fresher === '1';
+  const expected = expected_salary || salary_expected;
+  if (expected == null || expected === '') return res.status(400).json({ success: false, error: 'Expected salary is required' });
+  if (!fresher && (current_salary == null || current_salary === '')) return res.status(400).json({ success: false, error: 'Current salary is required (or mark as Fresher)' });
+  if (!aadhar_number || !/^\d{12}$/.test(String(aadhar_number).replace(/\s/g, ''))) return res.status(400).json({ success: false, error: 'A valid 12-digit Aadhar number is required' });
+  const aadhar = String(aadhar_number).replace(/\s/g, '');
+
   const vacancy = await db.prepare(`SELECT id FROM vacancies WHERE id = ? AND status IN ('open','interviewing','reopened')`).get(vacancyId);
   if (!vacancy) return res.status(404).json({ success: false, error: 'Vacancy not found or closed' });
+
+  // Parse qualification/experience JSON payloads (sent as strings in multipart form)
+  let quals = [], exps = [];
+  try { quals = req.body.qualifications ? JSON.parse(req.body.qualifications) : []; } catch { quals = []; }
+  try { exps = req.body.experience ? JSON.parse(req.body.experience) : []; } catch { exps = []; }
 
   let candidateId;
   if (phone) {
     const existing = await db.prepare('SELECT id FROM candidates WHERE phone = ?').get(phone);
     if (existing) {
       candidateId = existing.id;
-      await db.prepare(`UPDATE candidates SET full_name=?, father_or_husband_name=?, gender=?, date_of_birth=?, whatsapp_number=?, email=?, current_city=?, current_state=?, source='website', updated_at=datetime('now') WHERE id=?`)
-        .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, whatsapp_number || null, email || null, current_city || null, current_state || null, candidateId);
+      await db.prepare(`UPDATE candidates SET full_name=?, father_or_husband_name=?, gender=?, date_of_birth=?, whatsapp_number=?, email=?, current_city=?, current_state=?, current_salary=?, expected_salary=?, aadhar_number=?, oasis_id=?, is_fresher=?, source='website', updated_at=datetime('now') WHERE id=?`)
+        .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, whatsapp_number || null, email || null, current_city || null, current_state || null, fresher ? null : (current_salary || null), expected || null, aadhar, oasis_id || null, fresher ? 1 : 0, candidateId);
     }
   }
 
   if (!candidateId) {
     const resume_path = req.file ? `uploads/applications/${req.file.filename}` : null;
-    const r = await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, source, resume_path, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)`)
-      .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, resume_path, 'Applied via careers page');
+    const r = await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, current_salary, expected_salary, aadhar_number, oasis_id, is_fresher, source, resume_path, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)`)
+      .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, fresher ? null : (current_salary || null), expected || null, aadhar, oasis_id || null, fresher ? 1 : 0, resume_path, 'Applied via careers page');
     candidateId = r.lastInsertRowid;
+
+    await insertQualifications(candidateId, quals);
+    if (!fresher) await insertExperience(candidateId, exps);
 
     if (req.file) {
       await db.prepare('INSERT INTO documents (candidate_id, doc_type, file_name, file_path) VALUES (?, ?, ?, ?)')
@@ -87,7 +105,7 @@ router.post('/apply/:vacancyId', upload.single('resume'), async (req, res) => {
   }
 
   const app = await db.prepare('INSERT INTO applications (candidate_id, vacancy_id, salary_expected, earliest_join_date) VALUES (?, ?, ?, ?)')
-    .run(candidateId, vacancyId, salary_expected || null, earliest_join_date || null);
+    .run(candidateId, vacancyId, expected || null, earliest_join_date || null);
   await db.prepare(`INSERT INTO application_stage_history (application_id, from_stage, to_stage) VALUES (?, NULL, 'applied')`)
     .run(app.lastInsertRowid);
 

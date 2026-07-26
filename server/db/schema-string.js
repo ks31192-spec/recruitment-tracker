@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS candidates (
   current_state TEXT,
   photo_path TEXT,
   resume_path TEXT,
+  current_salary INTEGER,
+  expected_salary INTEGER,
+  aadhar_number TEXT,
+  oasis_id TEXT,
+  is_fresher INTEGER NOT NULL DEFAULT 0,
   source TEXT CHECK(source IN ('walk_in','naukri','whatsapp','referral','website','direct_call','other')),
   referrer_name TEXT,
   notes TEXT,
@@ -89,6 +94,7 @@ CREATE TABLE IF NOT EXISTS candidate_qualifications (
   university TEXT,
   year_of_passing INTEGER,
   percentage_or_cgpa TEXT,
+  is_appearing INTEGER NOT NULL DEFAULT 0,
   is_bed INTEGER NOT NULL DEFAULT 0,
   is_deled INTEGER NOT NULL DEFAULT 0,
   ctet_score REAL,
@@ -104,6 +110,8 @@ CREATE TABLE IF NOT EXISTS candidate_experience (
   designation TEXT,
   from_date TEXT,
   to_date TEXT,
+  subjects_taught TEXT,
+  other_roles TEXT,
   reason_for_leaving TEXT,
   reference_contact TEXT
 );

@@ -13,6 +13,43 @@ const resumeUpload = multer({ dest: resumeDest, limits: { fileSize: 10 * 1024 * 
 const router = Router();
 router.use(authenticate);
 
+// Insert qualification rows for a candidate. Auto-derives is_bed/is_deled/net flags
+// from the degree text so AI ranking + eligibility checks keep working.
+async function insertQualifications(candidateId, quals) {
+  if (!Array.isArray(quals)) return;
+  for (const q of quals) {
+    const degree = (q.degree || '').trim();
+    if (!degree && !q.university && !q.year_of_passing && !q.percentage_or_cgpa) continue;
+    const d = degree.toLowerCase();
+    const is_bed = q.is_bed ? 1 : (d.includes('b.ed') || d.includes('bed') ? 1 : 0);
+    const is_deled = q.is_deled ? 1 : (d.includes('d.el.ed') || d.includes('deled') ? 1 : 0);
+    const net_qualified = q.net_qualified ? 1 : 0;
+    await db.prepare(`INSERT INTO candidate_qualifications (candidate_id, degree, specialization, university, year_of_passing, percentage_or_cgpa, is_appearing, is_bed, is_deled, ctet_score, stet_score, net_qualified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(candidateId, degree || null, q.specialization || null, q.university || null, q.year_of_passing || null, q.percentage_or_cgpa || null, q.is_appearing ? 1 : 0, is_bed, is_deled, q.ctet_score || null, q.stet_score || null, net_qualified);
+  }
+}
+
+async function insertExperience(candidateId, exps) {
+  if (!Array.isArray(exps)) return;
+  for (const e of exps) {
+    if (!e.school_name && !e.designation && !e.subjects_taught) continue;
+    await db.prepare(`INSERT INTO candidate_experience (candidate_id, school_name, designation, from_date, to_date, subjects_taught, other_roles, reason_for_leaving, reference_contact)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(candidateId, e.school_name || null, e.designation || null, e.from_date || null, e.to_date || null, e.subjects_taught || null, e.other_roles || null, e.reason_for_leaving || null, e.reference_contact || null);
+  }
+}
+
+// Validate the mandatory fields shared by school-add and public-apply flows.
+function validateMandatory({ expected_salary, aadhar_number, current_salary, is_fresher }) {
+  if (expected_salary == null || expected_salary === '') return 'Expected salary is required';
+  if (!is_fresher && (current_salary == null || current_salary === '')) return 'Current salary is required (or mark as Fresher)';
+  if (!aadhar_number || !/^\d{12}$/.test(String(aadhar_number).replace(/\s/g, ''))) return 'A valid 12-digit Aadhar number is required';
+  return null;
+}
+
+export { insertQualifications, insertExperience, validateMandatory };
+
 // --- Resume Parser (before /:id routes) ---
 router.post('/parse-resume', authorize('super_admin', 'admin', 'hr'), resumeUpload.single('resume'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
@@ -199,22 +236,14 @@ router.post('/merge', authorize('super_admin', 'admin'), async (req, res) => {
   }
   await db.prepare('DELETE FROM candidate_tags WHERE candidate_id = ?').run(merge_id);
 
-  // Copy qualifications from merge to keep
+  // Copy qualifications + experience from merge to keep (preserves all columns)
   const mergeQuals = await db.prepare('SELECT * FROM candidate_qualifications WHERE candidate_id = ?').all(merge_id);
-  for (const q of mergeQuals) {
-    await db.prepare(`INSERT INTO candidate_qualifications (candidate_id, degree, specialization, university, year_of_passing, percentage_or_cgpa, is_bed, is_deled, ctet_score, stet_score, net_qualified)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(keep_id, q.degree, q.specialization, q.university, q.year_of_passing, q.percentage_or_cgpa, q.is_bed, q.is_deled, q.ctet_score, q.stet_score, q.net_qualified);
-  }
-
-  // Copy experience from merge to keep
+  await insertQualifications(keep_id, mergeQuals);
   const mergeExp = await db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(merge_id);
-  for (const e of mergeExp) {
-    await db.prepare(`INSERT INTO candidate_experience (candidate_id, school_name, designation, from_date, to_date, reason_for_leaving, reference_contact)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`).run(keep_id, e.school_name, e.designation, e.from_date, e.to_date, e.reason_for_leaving, e.reference_contact);
-  }
+  await insertExperience(keep_id, mergeExp);
 
   // Fill null fields on keep from merge
-  const fillableFields = ['father_or_husband_name', 'gender', 'date_of_birth', 'phone', 'whatsapp_number', 'email', 'current_city', 'current_state', 'photo_path', 'resume_path', 'source', 'referrer_name', 'notes'];
+  const fillableFields = ['father_or_husband_name', 'gender', 'date_of_birth', 'phone', 'whatsapp_number', 'email', 'current_city', 'current_state', 'current_salary', 'expected_salary', 'aadhar_number', 'oasis_id', 'photo_path', 'resume_path', 'source', 'referrer_name', 'notes'];
   const updates = [];
   const updateVals = [];
   for (const f of fillableFields) {
@@ -367,23 +396,50 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
-  const { full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, source, referrer_name, notes, force } = req.body;
+  const { full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state,
+    current_salary, expected_salary, aadhar_number, oasis_id, is_fresher, source, referrer_name, notes, qualifications, experience, force } = req.body;
   if (!full_name) return res.status(400).json({ success: false, error: 'Full name required' });
+
+  const validationError = validateMandatory({ expected_salary, aadhar_number, current_salary, is_fresher });
+  if (validationError) return res.status(400).json({ success: false, error: validationError });
 
   if (!force && phone) {
     const dupes = await db.prepare('SELECT id, full_name, phone FROM candidates WHERE phone = ?').all(phone);
     if (dupes.length) return res.json({ success: true, data: { duplicates: dupes } });
   }
 
-  const r = await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, source, referrer_name, notes, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, source || null, referrer_name || null, notes || null, req.user.id);
-  res.json({ success: true, data: { id: r.lastInsertRowid } });
+  const aadhar = aadhar_number ? String(aadhar_number).replace(/\s/g, '') : null;
+  const r = await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, current_salary, expected_salary, aadhar_number, oasis_id, is_fresher, source, referrer_name, notes, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, is_fresher ? null : (current_salary || null), expected_salary || null, aadhar, oasis_id || null, is_fresher ? 1 : 0, source || null, referrer_name || null, notes || null, req.user.id);
+  const candidateId = r.lastInsertRowid;
+
+  await insertQualifications(candidateId, qualifications);
+  if (!is_fresher) await insertExperience(candidateId, experience);
+
+  res.json({ success: true, data: { id: candidateId } });
 });
 
 router.put('/:id', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
-  const { full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, source, referrer_name, notes } = req.body;
-  await db.prepare(`UPDATE candidates SET full_name=?, father_or_husband_name=?, gender=?, date_of_birth=?, phone=?, whatsapp_number=?, email=?, current_city=?, current_state=?, source=?, referrer_name=?, notes=?, updated_at=datetime('now') WHERE id=?`)
-    .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, source || null, referrer_name || null, notes || null, req.params.id);
+  const { full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state,
+    current_salary, expected_salary, aadhar_number, oasis_id, is_fresher, source, referrer_name, notes, qualifications, experience } = req.body;
+
+  const validationError = validateMandatory({ expected_salary, aadhar_number, current_salary, is_fresher });
+  if (validationError) return res.status(400).json({ success: false, error: validationError });
+
+  const aadhar = aadhar_number ? String(aadhar_number).replace(/\s/g, '') : null;
+  await db.prepare(`UPDATE candidates SET full_name=?, father_or_husband_name=?, gender=?, date_of_birth=?, phone=?, whatsapp_number=?, email=?, current_city=?, current_state=?, current_salary=?, expected_salary=?, aadhar_number=?, oasis_id=?, is_fresher=?, source=?, referrer_name=?, notes=?, updated_at=datetime('now') WHERE id=?`)
+    .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, is_fresher ? null : (current_salary || null), expected_salary || null, aadhar, oasis_id || null, is_fresher ? 1 : 0, source || null, referrer_name || null, notes || null, req.params.id);
+
+  // Replace qualifications / experience when the arrays are provided by the form.
+  if (Array.isArray(qualifications)) {
+    await db.prepare('DELETE FROM candidate_qualifications WHERE candidate_id = ?').run(req.params.id);
+    await insertQualifications(+req.params.id, qualifications);
+  }
+  if (Array.isArray(experience)) {
+    await db.prepare('DELETE FROM candidate_experience WHERE candidate_id = ?').run(req.params.id);
+    if (!is_fresher) await insertExperience(+req.params.id, experience);
+  }
+
   res.json({ success: true, data: { id: +req.params.id } });
 });
 
@@ -412,17 +468,13 @@ router.get('/:id/timeline', async (req, res) => {
 });
 
 router.post('/:id/qualifications', authenticate, async (req, res) => {
-  const { degree, specialization, university, year_of_passing, percentage_or_cgpa, is_bed, is_deled, ctet_score, stet_score, net_qualified } = req.body;
-  const r = await db.prepare(`INSERT INTO candidate_qualifications (candidate_id, degree, specialization, university, year_of_passing, percentage_or_cgpa, is_bed, is_deled, ctet_score, stet_score, net_qualified)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.params.id, degree || null, specialization || null, university || null, year_of_passing || null, percentage_or_cgpa || null, is_bed ? 1 : 0, is_deled ? 1 : 0, ctet_score || null, stet_score || null, net_qualified ? 1 : 0);
-  res.json({ success: true, data: { id: r.lastInsertRowid } });
+  await insertQualifications(+req.params.id, [req.body]);
+  res.json({ success: true, data: { message: 'Added' } });
 });
 
 router.post('/:id/experience', authenticate, async (req, res) => {
-  const { school_name, designation, from_date, to_date, reason_for_leaving, reference_contact } = req.body;
-  const r = await db.prepare(`INSERT INTO candidate_experience (candidate_id, school_name, designation, from_date, to_date, reason_for_leaving, reference_contact)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(req.params.id, school_name || null, designation || null, from_date || null, to_date || null, reason_for_leaving || null, reference_contact || null);
-  res.json({ success: true, data: { id: r.lastInsertRowid } });
+  await insertExperience(+req.params.id, [req.body]);
+  res.json({ success: true, data: { message: 'Added' } });
 });
 
 // --- Notes ---

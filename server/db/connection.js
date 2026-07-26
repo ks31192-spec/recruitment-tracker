@@ -149,6 +149,27 @@ export function ensureReady() {
         }
 
         executeMultiple(SCHEMA_SQL);
+
+        // Idempotent column migrations for already-existing (persisted) DBs.
+        // Runs on every cold start; ALTER is skipped if the column already exists.
+        const migrations = [
+          ['candidates', 'current_salary', 'INTEGER'],
+          ['candidates', 'expected_salary', 'INTEGER'],
+          ['candidates', 'aadhar_number', 'TEXT'],
+          ['candidates', 'oasis_id', 'TEXT'],
+          ['candidates', 'is_fresher', 'INTEGER DEFAULT 0'],
+          ['candidate_qualifications', 'is_appearing', 'INTEGER DEFAULT 0'],
+          ['candidate_experience', 'subjects_taught', 'TEXT'],
+          ['candidate_experience', 'other_roles', 'TEXT'],
+        ];
+        for (const [table, col, def] of migrations) {
+          const info = sqlDb.exec(`PRAGMA table_info(${table})`);
+          const cols = info.length ? info[0].values.map(r => r[1]) : [];
+          if (!cols.includes(col)) {
+            try { sqlDb.run(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); }
+            catch (e) { console.error(`Migration failed: ${table}.${col}`, e.message); }
+          }
+        }
       } catch (e) {
         console.error('DB init failed:', e.message);
         readyPromise = null;

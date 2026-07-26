@@ -354,13 +354,24 @@ export default function CandidateDetail() {
             <div className="space-y-3">
               <h3 className="font-semibold text-gray-900">Personal Details</h3>
               <dl className="space-y-2 text-sm">
-                {[['Father/Husband', candidate.father_or_husband_name], ['Gender', candidate.gender], ['DOB', candidate.date_of_birth], ['WhatsApp', candidate.whatsapp_number], ['State', candidate.current_state], ['Source', sourceLabels[candidate.source] || candidate.source]].filter(([, v]) => v).map(([k, v]) => (
+                {[['Father/Husband', candidate.father_or_husband_name], ['Gender', candidate.gender], ['DOB', candidate.date_of_birth], ['WhatsApp', candidate.whatsapp_number], ['State', candidate.current_state], ['Aadhar', candidate.aadhar_number], ['Oasis ID', candidate.oasis_id], ['Source', sourceLabels[candidate.source] || candidate.source]].filter(([, v]) => v).map(([k, v]) => (
                   <div key={k} className="flex"><dt className="w-36 text-gray-500">{k}</dt><dd className="text-gray-900 capitalize">{v}</dd></div>
                 ))}
                 {candidate.referrer_name && <div className="flex"><dt className="w-36 text-gray-500">Referrer</dt><dd className="text-gray-900">{candidate.referrer_name}</dd></div>}
               </dl>
             </div>
-            {candidate.notes && <div><h3 className="font-semibold text-gray-900 mb-2">Notes</h3><p className="text-sm text-gray-600 whitespace-pre-wrap">{candidate.notes}</p></div>}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-900">Salary & Status</h3>
+              <dl className="space-y-2 text-sm">
+                {candidate.is_fresher ? (
+                  <div className="flex"><dt className="w-36 text-gray-500">Experience</dt><dd><span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">Fresher</span></dd></div>
+                ) : (
+                  <div className="flex"><dt className="w-36 text-gray-500">Current Salary</dt><dd className="text-gray-900">{candidate.current_salary ? `₹${Number(candidate.current_salary).toLocaleString('en-IN')}/mo` : '—'}</dd></div>
+                )}
+                <div className="flex"><dt className="w-36 text-gray-500">Expected Salary</dt><dd className="text-gray-900">{candidate.expected_salary ? `₹${Number(candidate.expected_salary).toLocaleString('en-IN')}/mo` : '—'}</dd></div>
+              </dl>
+              {candidate.notes && <div className="pt-2"><h3 className="font-semibold text-gray-900 mb-2">Notes</h3><p className="text-sm text-gray-600 whitespace-pre-wrap">{candidate.notes}</p></div>}
+            </div>
           </div>
         )}
 
@@ -397,9 +408,10 @@ export default function CandidateDetail() {
             {candidate.qualifications?.length === 0 ? <p className="text-sm text-gray-500">No qualifications added.</p> : candidate.qualifications?.map(q => (
               <div key={q.id} className="p-4 border border-gray-100 rounded-lg">
                 <p className="font-medium text-gray-900">{q.degree} {q.specialization ? `(${q.specialization})` : ''}</p>
-                <p className="text-sm text-gray-500">{q.university} {q.year_of_passing ? `- ${q.year_of_passing}` : ''}</p>
+                <p className="text-sm text-gray-500">{q.university} {q.is_appearing ? '- Appearing' : (q.year_of_passing ? `- ${q.year_of_passing}` : '')}</p>
                 <div className="flex gap-3 mt-2 text-xs text-gray-500 flex-wrap">
                   {q.percentage_or_cgpa && <span>{q.percentage_or_cgpa}</span>}
+                  {q.is_appearing ? <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Appearing</span> : null}
                   {q.is_bed ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">B.Ed</span> : null}
                   {q.is_deled ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">D.El.Ed</span> : null}
                   {q.net_qualified ? <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">NET</span> : null}
@@ -416,6 +428,8 @@ export default function CandidateDetail() {
               <div key={exp.id} className="p-4 border border-gray-100 rounded-lg">
                 <p className="font-medium text-gray-900">{exp.designation} at {exp.school_name}</p>
                 <p className="text-sm text-gray-500">{exp.from_date} - {exp.to_date || 'Present'}</p>
+                {exp.subjects_taught && <p className="text-xs text-gray-500 mt-1">Subjects: {exp.subjects_taught}</p>}
+                {exp.other_roles && <p className="text-xs text-gray-500 mt-0.5">Other roles: {exp.other_roles}</p>}
                 {exp.reason_for_leaving && <p className="text-xs text-gray-400 mt-1">Left: {exp.reason_for_leaving}</p>}
               </div>
             ))}
