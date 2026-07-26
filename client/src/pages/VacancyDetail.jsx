@@ -398,10 +398,20 @@ export default function VacancyDetail() {
   };
   useEffect(load, [id]);
 
+  const [deleteConfirmVacancy, setDeleteConfirmVacancy] = useState(false);
+
   const clone = async () => {
     const r = await api.post(`/vacancies/${id}/clone`);
     toast.success('Vacancy cloned');
     navigate(`/vacancies/${r.data.data.id}`);
+  };
+
+  const handleDeleteVacancy = async () => {
+    try {
+      await api.delete(`/vacancies/${id}`);
+      toast.success('Vacancy deleted');
+      navigate('/vacancies');
+    } catch { toast.error('Failed to delete vacancy'); }
   };
 
   const changeStage = async (appId, stage) => {
@@ -470,6 +480,15 @@ export default function VacancyDetail() {
         </button>
         <Link to={`/vacancies/${id}/edit`} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><Edit size={16} /> Edit</Link>
         <button onClick={clone} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><Copy size={16} /> Clone</button>
+        {deleteConfirmVacancy ? (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <span className="text-sm text-red-700 font-medium">Delete this vacancy?</span>
+            <button onClick={handleDeleteVacancy} className="px-2.5 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700">Yes, Delete</button>
+            <button onClick={() => setDeleteConfirmVacancy(false)} className="px-2.5 py-1 border border-gray-300 text-xs rounded-md hover:bg-gray-100">Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setDeleteConfirmVacancy(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"><Trash2 size={16} /> Delete</button>
+        )}
       </div>
 
       {/* Application Pipeline */}
