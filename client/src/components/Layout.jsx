@@ -5,20 +5,20 @@ import { useState } from 'react';
 import NotificationBell from './NotificationBell.jsx';
 
 export const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/vacancies', icon: Briefcase, label: 'Vacancies' },
-  { to: '/candidates', icon: Users, label: 'Candidates' },
-  { to: '/duplicates', icon: Copy, label: 'Duplicates' },
-  { to: '/interviews', icon: CalendarCheck, label: 'Interviews' },
-  { to: '/interviews/calendar', icon: Calendar, label: 'Calendar' },
-  { to: '/follow-ups', icon: Bell, label: 'Follow-ups' },
-  { to: '/referrals', icon: UserPlus, label: 'Referrals' },
-  { to: '/onboarding', icon: UserCheck, label: 'Onboarding' },
-  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/kanban', icon: Columns3, label: 'Kanban Board' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/audit-log', icon: Shield, label: 'Audit Log', roles: ['super_admin', 'admin'] },
-  { to: '/settings', icon: Settings, label: 'Settings', roles: ['super_admin', 'admin'] },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: 'text-blue-400', bg: 'bg-blue-500/15', active: 'bg-gradient-to-r from-blue-600 to-indigo-500' },
+  { to: '/vacancies', icon: Briefcase, label: 'Vacancies', color: 'text-violet-400', bg: 'bg-violet-500/15', active: 'bg-gradient-to-r from-violet-600 to-purple-500' },
+  { to: '/candidates', icon: Users, label: 'Candidates', color: 'text-emerald-400', bg: 'bg-emerald-500/15', active: 'bg-gradient-to-r from-emerald-600 to-teal-500' },
+  { to: '/duplicates', icon: Copy, label: 'Duplicates', color: 'text-amber-400', bg: 'bg-amber-500/15', active: 'bg-gradient-to-r from-amber-500 to-orange-500' },
+  { to: '/interviews', icon: CalendarCheck, label: 'Interviews', color: 'text-indigo-400', bg: 'bg-indigo-500/15', active: 'bg-gradient-to-r from-indigo-600 to-blue-500' },
+  { to: '/interviews/calendar', icon: Calendar, label: 'Calendar', color: 'text-purple-400', bg: 'bg-purple-500/15', active: 'bg-gradient-to-r from-purple-600 to-indigo-500' },
+  { to: '/follow-ups', icon: Bell, label: 'Follow-ups', color: 'text-orange-400', bg: 'bg-orange-500/15', active: 'bg-gradient-to-r from-orange-500 to-amber-500' },
+  { to: '/referrals', icon: UserPlus, label: 'Referrals', color: 'text-pink-400', bg: 'bg-pink-500/15', active: 'bg-gradient-to-r from-pink-600 to-rose-500' },
+  { to: '/onboarding', icon: UserCheck, label: 'Onboarding', color: 'text-cyan-400', bg: 'bg-cyan-500/15', active: 'bg-gradient-to-r from-cyan-600 to-blue-500' },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics', color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/15', active: 'bg-gradient-to-r from-fuchsia-600 to-pink-500' },
+  { to: '/kanban', icon: Columns3, label: 'Kanban Board', color: 'text-sky-400', bg: 'bg-sky-500/15', active: 'bg-gradient-to-r from-sky-600 to-blue-500' },
+  { to: '/reports', icon: FileText, label: 'Reports', color: 'text-teal-400', bg: 'bg-teal-500/15', active: 'bg-gradient-to-r from-teal-600 to-emerald-500' },
+  { to: '/audit-log', icon: Shield, label: 'Audit Log', roles: ['super_admin', 'admin'], color: 'text-slate-400', bg: 'bg-slate-500/15', active: 'bg-gradient-to-r from-slate-600 to-gray-500' },
+  { to: '/settings', icon: Settings, label: 'Settings', roles: ['super_admin', 'admin'], color: 'text-gray-400', bg: 'bg-gray-500/15', active: 'bg-gradient-to-r from-gray-600 to-slate-500' },
 ];
 
 export default function Layout() {
@@ -50,14 +50,22 @@ export default function Layout() {
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.filter(n => !n.roles || n.roles.includes(user?.role)).map(item => (
             <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}`}>
-              <item.icon size={18} />
-              {item.label}
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive ? item.active + ' text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'}`}>
+              {({ isActive }) => (
+                <>
+                  <span className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${isActive ? 'bg-white/20' : item.bg}`}>
+                    <item.icon size={16} className={isActive ? 'text-white' : item.color} />
+                  </span>
+                  <span>{item.label}</span>
+                </>
+              )}
             </NavLink>
           ))}
           <a href="/careers" target="_blank" rel="noopener"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white transition-colors">
-            <Globe size={18} />
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors">
+            <span className="flex items-center justify-center w-7 h-7 rounded-md bg-green-500/15">
+              <Globe size={16} className="text-green-400" />
+            </span>
             Careers Page
           </a>
         </nav>
