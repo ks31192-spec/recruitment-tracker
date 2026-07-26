@@ -11,7 +11,7 @@ export const navItems = [
   { to: '/vacancies', icon: Briefcase, label: 'Vacancies', color: 'text-violet-400', bg: 'bg-violet-500/15', active: 'bg-gradient-to-r from-violet-600 to-purple-500' },
   { to: '/candidates', icon: Users, label: 'Candidates', color: 'text-emerald-400', bg: 'bg-emerald-500/15', active: 'bg-gradient-to-r from-emerald-600 to-teal-500' },
   { to: '/duplicates', icon: Copy, label: 'Duplicates', color: 'text-amber-400', bg: 'bg-amber-500/15', active: 'bg-gradient-to-r from-amber-500 to-orange-500' },
-  { to: '/interviews', icon: CalendarCheck, label: 'Interviews', color: 'text-indigo-400', bg: 'bg-indigo-500/15', active: 'bg-gradient-to-r from-indigo-600 to-blue-500' },
+  { to: '/interviews', icon: CalendarCheck, label: 'Interviews', end: true, color: 'text-indigo-400', bg: 'bg-indigo-500/15', active: 'bg-gradient-to-r from-indigo-600 to-blue-500' },
   { to: '/interviews/calendar', icon: Calendar, label: 'Calendar', color: 'text-purple-400', bg: 'bg-purple-500/15', active: 'bg-gradient-to-r from-purple-600 to-indigo-500' },
   { to: '/follow-ups', icon: Bell, label: 'Follow-ups', color: 'text-orange-400', bg: 'bg-orange-500/15', active: 'bg-gradient-to-r from-orange-500 to-amber-500' },
   { to: '/referrals', icon: UserPlus, label: 'Referrals', color: 'text-pink-400', bg: 'bg-pink-500/15', active: 'bg-gradient-to-r from-pink-600 to-rose-500' },
@@ -55,7 +55,7 @@ export default function Layout() {
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.filter(n => !n.roles || n.roles.includes(user?.role)).map(item => (
-            <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
+            <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive ? item.active + ' text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'}`}>
               {({ isActive }) => (
                 <>
