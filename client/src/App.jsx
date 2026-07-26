@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import GlobalSearch from './components/GlobalSearch.jsx';
 import Layout from './components/Layout.jsx';
+import PWAPrompt from './components/PWAPrompt.jsx';
 import Login from './pages/Login.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import CareersPage from './pages/CareersPage.jsx';
@@ -37,6 +38,7 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <ToastProvider>
+      <PWAPrompt />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
