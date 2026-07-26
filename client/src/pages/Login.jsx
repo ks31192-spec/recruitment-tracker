@@ -29,10 +29,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-4">
       <div className="w-full max-w-md backdrop-blur-xl bg-white/95 rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 w-16 h-16">
+          <div className="flex justify-center mb-4">
             <SchoolLogo size={64} rounded="rounded-2xl" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{schoolName}</h1>
@@ -65,7 +65,7 @@ export default function Login() {
           </div>
         </form>
       </div>
-      <p className="text-center text-white/60 text-sm mt-6">{`Powered by ${schoolName} Recruitment`}</p>
+      <p className="text-center text-white/60 text-sm mt-6">Powered by Sarvagya Solutions</p>
     </div>
   );
 }
