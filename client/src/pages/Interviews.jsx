@@ -19,7 +19,14 @@ export default function Interviews() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-gray-900">Interviews</h1>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 p-6 mb-6 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold">Interviews</h1>
+          <p className="text-white/70 text-sm mt-1">Schedule, track and manage candidate interviews</p>
+        </div>
+      </div>
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
         <button onClick={() => setTab('today')} className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${tab === 'today' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}>Today</button>
         <button onClick={() => setTab('upcoming')} className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${tab === 'upcoming' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}>Upcoming</button>

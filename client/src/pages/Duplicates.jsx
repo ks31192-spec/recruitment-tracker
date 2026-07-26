@@ -64,16 +64,21 @@ export default function Duplicates() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Duplicate Candidates</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {groups.length === 0 ? 'No duplicates found' : `${groups.length} potential duplicate group${groups.length > 1 ? 's' : ''} detected`}
-          </p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 p-6 mb-6 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Duplicate Candidates</h1>
+            <p className="text-white/70 text-sm mt-1">Find and merge duplicate candidate records</p>
+            <p className="text-white/50 text-xs mt-1">
+              {groups.length === 0 ? 'No duplicates found' : `${groups.length} potential duplicate group${groups.length > 1 ? 's' : ''} detected`}
+            </p>
+          </div>
+          <button onClick={load} className="px-3 py-2 text-sm bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">
+            Refresh
+          </button>
         </div>
-        <button onClick={load} className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-          Refresh
-        </button>
       </div>
 
       {groups.length === 0 && (

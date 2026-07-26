@@ -105,11 +105,18 @@ export default function InterviewCalendar() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Interview Calendar</h1>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Calendar size={16} />
-          <span>{interviewCount} interview{interviewCount !== 1 ? 's' : ''} this month</span>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 p-6 mb-1 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Interview Calendar</h1>
+            <p className="text-white/70 text-sm mt-1">Monthly interview schedule at a glance</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-white/60 bg-white/10 px-3 py-1.5 rounded-full">
+            <Calendar size={16} />
+            <span>{interviewCount} interview{interviewCount !== 1 ? 's' : ''} this month</span>
+          </div>
         </div>
       </div>
 

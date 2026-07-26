@@ -251,16 +251,18 @@ export default function KanbanBoard() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Columns3 className="text-blue-600" size={24} />
-          <h1 className="text-2xl font-bold text-gray-900">Kanban Board</h1>
-        </div>
-        <div className="flex items-center gap-3">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-600 to-blue-600 p-6 mb-1 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Kanban Board</h1>
+            <p className="text-white/70 text-sm mt-1">Drag and drop candidates through your pipeline</p>
+          </div>
           <select
             value={selectedVacancy}
             onChange={e => setSelectedVacancy(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[250px]"
+            className="rounded-lg px-3 py-2 text-sm bg-white/20 hover:bg-white/30 text-white focus:outline-none focus:ring-2 focus:ring-white/40 min-w-[250px] [&>option]:text-gray-900"
           >
             <option value="">Select a vacancy...</option>
             {vacancies.map(v => (

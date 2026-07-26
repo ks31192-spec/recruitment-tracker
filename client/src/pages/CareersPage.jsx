@@ -48,32 +48,35 @@ export default function CareersPage() {
       </header>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 text-white">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/3" />
+        <div className="absolute top-1/2 right-1/4 w-48 h-48 bg-white/5 rounded-full" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
           <div className="max-w-2xl">
-            <p className="text-blue-200 text-sm font-medium tracking-wide uppercase mb-3">Careers</p>
-            <h2 className="text-3xl sm:text-4xl font-bold leading-tight mb-4">
+            <p className="text-blue-200 text-sm font-medium tracking-widest uppercase mb-4">We Are Hiring</p>
+            <h2 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-5">
               Shape the Future of Education
             </h2>
-            <p className="text-blue-100 text-lg leading-relaxed mb-8">
+            <p className="text-blue-100 text-lg sm:text-xl leading-relaxed mb-10">
               Join a team of passionate educators dedicated to nurturing young minds. We're looking for talented individuals who share our vision of excellence in education.
             </p>
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Briefcase size={16} />
+            <div className="flex items-center gap-8 text-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Briefcase size={18} />
                 </div>
                 <div>
-                  <p className="font-semibold">{vacancies.length}</p>
+                  <p className="text-xl font-bold">{vacancies.length}</p>
                   <p className="text-blue-200 text-xs">Open Positions</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Users size={16} />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Users size={18} />
                 </div>
                 <div>
-                  <p className="font-semibold">{departments.length}</p>
+                  <p className="text-xl font-bold">{departments.length}</p>
                   <p className="text-blue-200 text-xs">Departments</p>
                 </div>
               </div>

@@ -35,18 +35,22 @@ export default function Candidates() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Candidates</h1>
-          {data.total > 0 && <p className="text-sm text-gray-500 mt-0.5">{data.total} total candidates</p>}
-        </div>
-        <div className="flex gap-2">
-          <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
-            <Download size={16} /> Export CSV
-          </button>
-          <Link to="/candidates/new" className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus size={16} /> Add Candidate
-          </Link>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 p-6 mb-6 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Candidates</h1>
+            {data.total > 0 && <p className="text-white/70 text-sm mt-1">{data.total} total candidates</p>}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">
+              <Download size={16} /> Export CSV
+            </button>
+            <Link to="/candidates/new" className="flex items-center gap-1.5 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm rounded-lg transition-colors">
+              <Plus size={16} /> Add Candidate
+            </Link>
+          </div>
         </div>
       </div>
 

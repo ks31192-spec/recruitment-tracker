@@ -16,7 +16,14 @@ export default function FollowUps() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-gray-900">Follow-ups</h1>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-6 mb-6 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold">Follow-ups</h1>
+          <p className="text-white/70 text-sm mt-1">Stay on top of pending communications</p>
+        </div>
+      </div>
 
       {followups.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-200">

@@ -52,14 +52,16 @@ export default function Onboarding() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Onboarding</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {offers.length === 0 ? 'No candidates in onboarding' : `${offers.length} accepted / joined candidate${offers.length > 1 ? 's' : ''}`}
-          </p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 p-6 mb-6 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Onboarding</h1>
+            <p className="text-white/70 text-sm mt-1">Track new hire onboarding progress</p>
+          </div>
+          <button onClick={load} className="px-3 py-2 text-sm bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">Refresh</button>
         </div>
-        <button onClick={load} className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Refresh</button>
       </div>
 
       {offers.length === 0 && (

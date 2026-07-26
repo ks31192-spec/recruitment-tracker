@@ -41,8 +41,8 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 flex items-center justify-center p-4">
+      <div className="backdrop-blur-xl bg-white/95 rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <Link to="/login" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
           <ArrowLeft size={16} /> Back to Login
         </Link>

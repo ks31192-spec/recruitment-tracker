@@ -24,12 +24,16 @@ export default function AuditLog() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Shield className="text-blue-600" size={24} />
-          <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-700 to-slate-600 p-6 mb-1 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Audit Log</h1>
+            <p className="text-white/70 text-sm mt-1">Track all system activity and changes</p>
+          </div>
+          <span className="text-sm text-white/60 bg-white/10 px-3 py-1 rounded-full">{total} entries</span>
         </div>
-        <span className="text-sm text-gray-500">{total} entries</span>
       </div>
 
       <div className="flex gap-3 flex-wrap">

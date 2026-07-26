@@ -26,10 +26,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-4">
+      <div className="w-full max-w-md backdrop-blur-xl bg-white/95 rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl font-bold text-white">AM</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">A M World School</h1>
@@ -49,7 +49,7 @@ export default function Login() {
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Enter password" />
           </div>
           <button type="submit" disabled={loading}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2 transition-colors">
+            className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-medium hover:from-blue-700 hover:to-cyan-600 disabled:opacity-60 flex items-center justify-center gap-2 transition-colors">
             <LogIn size={18} />
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
@@ -62,6 +62,7 @@ export default function Login() {
           </div>
         </form>
       </div>
+      <p className="text-center text-white/60 text-sm mt-6">Powered by A M World School Recruitment</p>
     </div>
   );
 }

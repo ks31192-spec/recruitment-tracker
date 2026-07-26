@@ -22,11 +22,18 @@ export default function Vacancies() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Vacancies</h1>
-        <Link to="/vacancies/new" className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
-          <Plus size={16} /> Create Vacancy
-        </Link>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 p-6 mb-6 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Vacancies</h1>
+            <p className="text-white/70 text-sm mt-1">Manage open positions and track hiring progress</p>
+          </div>
+          <Link to="/vacancies/new" className="flex items-center gap-1.5 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm rounded-lg transition-colors">
+            <Plus size={16} /> Create Vacancy
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1">

@@ -412,7 +412,14 @@ export default function Settings() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gray-700 to-gray-600 p-6 mb-1 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-white/70 text-sm mt-1">Configure your recruitment platform</p>
+        </div>
+      </div>
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto">
         {tabs.map(t => (
           <button key={t} onClick={() => setTab(t)}

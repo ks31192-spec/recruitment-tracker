@@ -459,12 +459,16 @@ export default function Reports() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <div className="flex items-center gap-3">
-          <FileText className="text-blue-600" size={24} />
-          <h1 className="text-2xl font-bold text-gray-900">Custom Reports</h1>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 p-6 mb-1 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Custom Reports</h1>
+            <p className="text-white/70 text-sm mt-1">Generate and export recruitment reports</p>
+          </div>
+          <FileText size={32} className="text-white/30" />
         </div>
-        <p className="text-sm text-gray-500 mt-1 ml-9">Generate custom recruitment reports, view forecasts, costs, and SLA compliance</p>
       </div>
 
       {/* Tabs */}

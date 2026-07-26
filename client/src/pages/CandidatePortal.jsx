@@ -179,14 +179,16 @@ export default function CandidatePortal() {
   }, [handleUpload]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-lg">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center gap-3">
+      <header className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 text-white shadow-lg">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative max-w-4xl mx-auto px-4 py-6 flex items-center gap-3">
           <Shield className="w-8 h-8" />
           <div>
             <h1 className="text-xl font-bold">A M World School</h1>
-            <p className="text-blue-200 text-sm">Candidate Portal</p>
+            <p className="text-white/70 text-sm">Candidate Portal</p>
           </div>
         </div>
       </header>
@@ -195,7 +197,7 @@ export default function CandidatePortal() {
         {/* Step 1: Phone Input */}
         {step === 1 && (
           <div className="max-w-md mx-auto">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+            <div className="backdrop-blur bg-white/95 rounded-xl shadow-sm border border-gray-100 p-8">
               <div className="text-center mb-6">
                 <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Phone className="w-7 h-7 text-blue-600" />
@@ -233,7 +235,7 @@ export default function CandidatePortal() {
         {/* Step 2: OTP Verification */}
         {step === 2 && (
           <div className="max-w-md mx-auto">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+            <div className="backdrop-blur bg-white/95 rounded-xl shadow-sm border border-gray-100 p-8">
               <div className="text-center mb-6">
                 <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <KeyRound className="w-7 h-7 text-indigo-600" />

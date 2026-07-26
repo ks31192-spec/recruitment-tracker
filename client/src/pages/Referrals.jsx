@@ -69,17 +69,18 @@ export default function Referrals() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-3">
-            <Users className="text-blue-600" size={24} />
-            <h1 className="text-2xl font-bold text-gray-900">Staff Referral Portal</h1>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-pink-600 to-rose-600 p-6 mb-1 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Staff Referral Portal</h1>
+            <p className="text-white/70 text-sm mt-1">Track staff referrals and rewards</p>
           </div>
-          <p className="text-sm text-gray-500 mt-1 ml-9">Refer talented candidates and track your referrals</p>
+          <button onClick={openModal} className="flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-lg transition-colors">
+            <UserPlus size={16} /> Refer a Candidate
+          </button>
         </div>
-        <button onClick={openModal} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-          <UserPlus size={16} /> Refer a Candidate
-        </button>
       </div>
 
       {/* Stats (admin only) */}
