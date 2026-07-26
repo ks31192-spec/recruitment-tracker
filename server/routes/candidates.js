@@ -570,12 +570,12 @@ router.get('/:id/timeline', async (req, res) => {
   res.json({ success: true, data: events });
 });
 
-router.post('/:id/qualifications', authenticate, async (req, res) => {
+router.post('/:id/qualifications', authenticate, authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   await insertQualifications(+req.params.id, [req.body]);
   res.json({ success: true, data: { message: 'Added' } });
 });
 
-router.post('/:id/experience', authenticate, async (req, res) => {
+router.post('/:id/experience', authenticate, authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   await insertExperience(+req.params.id, [req.body]);
   res.json({ success: true, data: { message: 'Added' } });
 });
@@ -586,7 +586,7 @@ router.get('/:id/notes', async (req, res) => {
   res.json({ success: true, data: notes });
 });
 
-router.post('/:id/notes', async (req, res) => {
+router.post('/:id/notes', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { note } = req.body;
   if (!note?.trim()) return res.status(400).json({ success: false, error: 'Note required' });
   const r = await db.prepare('INSERT INTO candidate_notes (candidate_id, user_id, user_name, note) VALUES (?, ?, ?, ?)')
@@ -594,7 +594,7 @@ router.post('/:id/notes', async (req, res) => {
   res.json({ success: true, data: { id: r.lastInsertRowid } });
 });
 
-router.delete('/:id/notes/:noteId', async (req, res) => {
+router.delete('/:id/notes/:noteId', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   await db.prepare('DELETE FROM candidate_notes WHERE id = ? AND candidate_id = ?').run(req.params.noteId, req.params.id);
   res.json({ success: true, data: { message: 'Deleted' } });
 });
@@ -627,7 +627,7 @@ router.get('/:id/tags', async (req, res) => {
   res.json({ success: true, data: tags });
 });
 
-router.post('/:id/tags', async (req, res) => {
+router.post('/:id/tags', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { tag_id } = req.body;
   if (!tag_id) return res.status(400).json({ success: false, error: 'tag_id required' });
   try {
@@ -636,7 +636,7 @@ router.post('/:id/tags', async (req, res) => {
   res.json({ success: true, data: { message: 'Tagged' } });
 });
 
-router.delete('/:id/tags/:tagId', async (req, res) => {
+router.delete('/:id/tags/:tagId', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   await db.prepare('DELETE FROM candidate_tags WHERE candidate_id = ? AND tag_id = ?').run(req.params.id, req.params.tagId);
   res.json({ success: true, data: { message: 'Untagged' } });
 });

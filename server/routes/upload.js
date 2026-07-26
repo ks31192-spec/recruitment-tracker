@@ -9,6 +9,8 @@ import { authenticate } from '../middleware/auth.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '..', 'uploads');
 
+const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp']);
+
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {
     const dir = join(uploadsDir, String(req.params.id));
@@ -20,7 +22,15 @@ const storage = multer.diskStorage({
     cb(null, unique + extname(file.originalname));
   }
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = extname(file.originalname).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) return cb(new Error('File type not allowed'));
+    cb(null, true);
+  },
+});
 
 const router = Router();
 router.use(authenticate);

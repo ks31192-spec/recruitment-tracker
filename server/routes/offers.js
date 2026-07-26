@@ -18,7 +18,7 @@ function parseOnboarding(raw) {
   try { const a = JSON.parse(raw); return Array.isArray(a) ? a : seed(); } catch { return seed(); }
 }
 
-router.post('/', async (req, res) => {
+router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { application_id, designation_offered, salary_offered, joining_date_proposed } = req.body;
   if (!application_id) return res.status(400).json({ success: false, error: 'application_id required' });
   const r = await db.prepare(`INSERT INTO offers (application_id, designation_offered, salary_offered, joining_date_proposed) VALUES (?, ?, ?, ?)`)
@@ -26,7 +26,7 @@ router.post('/', async (req, res) => {
   res.json({ success: true, data: { id: r.lastInsertRowid } });
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { response, response_date, decline_reason, actually_joined, actual_joining_date, left_during_probation, probation_leave_date, probation_leave_reason, notes } = req.body;
   await db.prepare(`UPDATE offers SET response=?, response_date=?, decline_reason=?, actually_joined=?, actual_joining_date=?, left_during_probation=?, probation_leave_date=?, probation_leave_reason=?, notes=? WHERE id=?`)
     .run(response || 'pending', response_date || null, decline_reason || null, actually_joined ? 1 : 0, actual_joining_date || null, left_during_probation ? 1 : 0, probation_leave_date || null, probation_leave_reason || null, notes || null, req.params.id);

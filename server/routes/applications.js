@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db/connection.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { createNotification } from './notifications.js';
 
 const router = Router();
@@ -22,7 +22,7 @@ async function notifyStageChange(applicationId, toStage, actor) {
   } catch { /* notifications are best-effort */ }
 }
 
-router.post('/', async (req, res) => {
+router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { candidate_id, vacancy_id, salary_expected, earliest_join_date } = req.body;
   if (!candidate_id || !vacancy_id) return res.status(400).json({ success: false, error: 'candidate_id and vacancy_id required' });
   try {
@@ -46,7 +46,7 @@ router.get('/:id', async (req, res) => {
   res.json({ success: true, data: app });
 });
 
-router.put('/:id/stage', async (req, res) => {
+router.put('/:id/stage', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { stage, reason } = req.body;
   const app = await db.prepare('SELECT current_stage FROM applications WHERE id = ?').get(req.params.id);
   if (!app) return res.status(404).json({ success: false, error: 'Not found' });
@@ -58,7 +58,7 @@ router.put('/:id/stage', async (req, res) => {
   res.json({ success: true, data: { id: +req.params.id, stage } });
 });
 
-router.post('/bulk-stage', async (req, res) => {
+router.post('/bulk-stage', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { application_ids, stage, reason } = req.body;
   if (!application_ids?.length || !stage) return res.status(400).json({ success: false, error: 'application_ids and stage required' });
 

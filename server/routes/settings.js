@@ -3,6 +3,14 @@ import bcrypt from 'bcryptjs';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
+function validatePassword(pw) {
+  if (!pw || pw.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(pw)) return 'Password must contain an uppercase letter';
+  if (!/[a-z]/.test(pw)) return 'Password must contain a lowercase letter';
+  if (!/[0-9]/.test(pw)) return 'Password must contain a number';
+  return null;
+}
+
 const router = Router();
 router.use(authenticate);
 
@@ -101,6 +109,8 @@ router.post('/users', authorize('super_admin'), async (req, res) => {
   if (!name || !email || !password || !role) {
     return res.status(400).json({ success: false, error: 'All fields required' });
   }
+  const pwError = validatePassword(password);
+  if (pwError) return res.status(400).json({ success: false, error: pwError });
   const hash = bcrypt.hashSync(password, 10);
   try {
     const r = await db.prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run(name, email, hash, role);

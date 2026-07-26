@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 dotenv.config();
 
 import { ensureReady, refreshFromFirestore } from './db/connection.js';
+import { authenticate } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
 import vacancyRoutes from './routes/vacancies.js';
@@ -34,7 +35,7 @@ const app = express();
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(process.env.VERCEL ? '/tmp/uploads' : join(__dirname, 'uploads')));
+app.use('/uploads', authenticate, express.static(process.env.VERCEL ? '/tmp/uploads' : join(__dirname, 'uploads')));
 
 app.get('/api/health', async (_req, res) => {
   try {

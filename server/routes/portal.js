@@ -1,12 +1,24 @@
 import { Router } from 'express';
+import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 import db from '../db/connection.js';
 import multer from 'multer';
 import { existsSync, mkdirSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, error: 'Too many OTP requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '..', 'uploads');
+
+const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp']);
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -19,12 +31,20 @@ const storage = multer.diskStorage({
     cb(null, unique + extname(file.originalname));
   },
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = extname(file.originalname).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) return cb(new Error('File type not allowed'));
+    cb(null, true);
+  },
+});
 
 const router = Router();
 
 // Request OTP
-router.post('/request-otp', async (req, res) => {
+router.post('/request-otp', otpLimiter, async (req, res) => {
   const { phone } = req.body;
   if (!phone?.trim()) {
     return res.status(400).json({ success: false, error: 'Phone number is required' });
@@ -45,9 +65,10 @@ router.post('/request-otp', async (req, res) => {
     .prepare('INSERT INTO candidate_portal_tokens (candidate_id, phone, otp, expires_at) VALUES (?, ?, ?, ?)')
     .run(candidate.id, phone.trim(), otp, expiresAt);
 
+  // TODO: integrate real SMS provider (Twilio/MSG91) to send OTP
   res.json({
     success: true,
-    data: { message: 'OTP sent', otp },
+    data: { message: 'OTP sent to your registered phone number' },
   });
 });
 
@@ -70,8 +91,15 @@ router.post('/verify-otp', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Invalid or expired OTP' });
   }
 
-  // Delete used token
+  // Delete used OTP token
   await db.prepare('DELETE FROM candidate_portal_tokens WHERE id = ?').run(token.id);
+
+  // Issue a portal session token (valid 1 hour)
+  const sessionToken = crypto.randomBytes(32).toString('hex');
+  const sessionExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  await db.prepare(
+    'INSERT INTO candidate_portal_tokens (candidate_id, phone, otp, expires_at) VALUES (?, ?, ?, ?)'
+  ).run(token.candidate_id, phone.trim(), `session:${sessionToken}`, sessionExpires);
 
   // Fetch candidate details
   const candidate = await db
@@ -99,6 +127,7 @@ router.post('/verify-otp', async (req, res) => {
   res.json({
     success: true,
     data: {
+      session_token: sessionToken,
       candidate,
       applications,
       documents,
@@ -106,19 +135,24 @@ router.post('/verify-otp', async (req, res) => {
   });
 });
 
-// Upload document (pass candidate_id in body)
+// Upload document — requires portal session token
 router.post('/upload-document', upload.single('file'), async (req, res) => {
-  const { candidate_id } = req.body;
-  if (!candidate_id) {
-    return res.status(400).json({ success: false, error: 'candidate_id is required' });
-  }
-  if (!req.file) {
-    return res.status(400).json({ success: false, error: 'File is required' });
+  const { candidate_id, session_token } = req.body;
+  if (!candidate_id || !session_token) {
+    return res.status(400).json({ success: false, error: 'candidate_id and session_token are required' });
   }
 
-  const candidate = await db.prepare('SELECT id FROM candidates WHERE id = ?').get(candidate_id);
-  if (!candidate) {
-    return res.status(404).json({ success: false, error: 'Candidate not found' });
+  const session = await db.prepare(
+    `SELECT * FROM candidate_portal_tokens
+     WHERE candidate_id = ? AND otp = ? AND expires_at > datetime('now')
+     ORDER BY created_at DESC LIMIT 1`
+  ).get(candidate_id, `session:${session_token}`);
+  if (!session) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired session' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'File is required' });
   }
 
   const filePath = `/uploads/portal/${req.file.filename}`;

@@ -26,4 +26,4 @@ npm run dev
 ## Live
 https://recruitment-tracker-azure.vercel.app
 
-Default login: `admin@amworld.in` / `Admin@123`
+Login credentials are provided separately — do not commit them to version control.

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import db from '../db/connection.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { createNotification } from './notifications.js';
 
 const router = Router();
 router.use(authenticate);
 
-router.post('/', async (req, res) => {
+router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { application_id, interview_type, scheduled_date, scheduled_time, mode, location_or_link, demo_topic, demo_class, demo_duration_minutes, panel_member_ids } = req.body;
   if (!application_id || !interview_type || !scheduled_date) {
     return res.status(400).json({ success: false, error: 'application_id, interview_type, scheduled_date required' });
@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
   res.json({ success: true, data: { id: r.lastInsertRowid } });
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { scheduled_date, scheduled_time, mode, location_or_link, status, demo_topic, demo_class, demo_duration_minutes } = req.body;
   await db.prepare(`UPDATE interviews SET scheduled_date=?, scheduled_time=?, mode=?, location_or_link=?, status=?, demo_topic=?, demo_class=?, demo_duration_minutes=?, updated_at=datetime('now') WHERE id=?`)
     .run(scheduled_date, scheduled_time || null, mode || 'in_person', location_or_link || null, status || 'scheduled', demo_topic || null, demo_class || null, demo_duration_minutes || null, req.params.id);
@@ -53,7 +53,7 @@ router.get('/candidate/:candidateId', async (req, res) => {
 });
 
 // Save/update the institution's remarks for an interview or demo
-router.put('/:id/remarks', async (req, res) => {
+router.put('/:id/remarks', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { remarks, status } = req.body;
   const existing = await db.prepare('SELECT id FROM interviews WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ success: false, error: 'Interview not found' });

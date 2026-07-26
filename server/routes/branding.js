@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db/connection.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get('/', async (req, res) => {
 });
 
 // PUT /branding - admin only
-router.put('/', async (req, res) => {
+router.put('/', authenticate, authorize('super_admin', 'admin'), async (req, res) => {
   const { school_name, school_tagline, school_short, school_logo } = req.body;
   if (school_name) await db.prepare('INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)').run('school_name', school_name.trim());
   if (school_tagline) await db.prepare('INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)').run('school_tagline', school_tagline.trim());
