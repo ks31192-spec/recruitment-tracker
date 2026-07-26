@@ -42,6 +42,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        {/* Target of the emailed reset link, which carries ?token=... */}
+        <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/careers/:vacancyId" element={<PublicApply />} />
         <Route path="/portal" element={<CandidatePortal />} />

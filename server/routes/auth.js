@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { sendPasswordReset } from '../lib/email.js';
+import { validatePassword } from '../lib/password.js';
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -14,14 +15,6 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-function validatePassword(pw) {
-  if (!pw || pw.length < 8) return 'Password must be at least 8 characters';
-  if (!/[A-Z]/.test(pw)) return 'Password must contain an uppercase letter';
-  if (!/[a-z]/.test(pw)) return 'Password must contain a lowercase letter';
-  if (!/[0-9]/.test(pw)) return 'Password must contain a number';
-  return null;
-}
 
 const router = Router();
 

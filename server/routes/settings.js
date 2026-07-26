@@ -2,14 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
-
-function validatePassword(pw) {
-  if (!pw || pw.length < 8) return 'Password must be at least 8 characters';
-  if (!/[A-Z]/.test(pw)) return 'Password must contain an uppercase letter';
-  if (!/[a-z]/.test(pw)) return 'Password must contain a lowercase letter';
-  if (!/[0-9]/.test(pw)) return 'Password must contain a number';
-  return null;
-}
+import { validatePassword } from '../lib/password.js';
 
 const router = Router();
 router.use(authenticate);

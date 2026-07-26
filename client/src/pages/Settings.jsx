@@ -4,6 +4,7 @@ import api from '../lib/api.js';
 import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette, Send, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import PasswordInput from '../components/PasswordInput.jsx';
+import { validatePassword, PASSWORD_RULE } from '../lib/password.js';
 import { useBranding } from '../context/BrandingContext.jsx';
 
 function EditableList({ endpoint, nameKey, label }) {
@@ -89,10 +90,16 @@ function UsersTab() {
 
   const addUser = async (e) => {
     e.preventDefault();
-    await api.post('/settings/users', form);
-    setForm({ name: '', email: '', password: '', role: 'hr' });
-    setShowForm(false);
-    load();
+    const pwError = validatePassword(form.password);
+    if (pwError) { toast.error(pwError); return; }
+    try {
+      await api.post('/settings/users', form);
+      setForm({ name: '', email: '', password: '', role: 'hr' });
+      setShowForm(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create user');
+    }
   };
 
   const toggleActive = async (u) => {
@@ -107,6 +114,8 @@ function UsersTab() {
 
   const handleResetPassword = async () => {
     if (!resetPassword.trim()) return;
+    const pwError = validatePassword(resetPassword);
+    if (pwError) { toast.error(pwError); return; }
     setResetting(true);
     try {
       await api.post('/auth/admin-reset-password', { user_id: resetModal.id, new_password: resetPassword });
@@ -131,6 +140,7 @@ function UsersTab() {
           <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
             <option value="admin">Admin</option><option value="hr">HR</option><option value="panel_member">Panel Member</option><option value="viewer">Viewer</option>
           </select>
+          <p className="md:col-span-2 -mt-1 text-xs text-gray-400">{PASSWORD_RULE}</p>
           <button type="submit" className="md:col-span-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Create User</button>
         </form>
       )}
@@ -175,11 +185,12 @@ function UsersTab() {
               value={resetPassword}
               onChange={e => setResetPassword(e.target.value)}
               placeholder="Enter new password"
-              wrapperClassName="mb-4"
+              wrapperClassName="mb-2"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               autoFocus
               onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
             />
+            <p className="text-xs text-gray-400 mb-4">{PASSWORD_RULE}</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setResetModal(null)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleResetPassword} disabled={resetting || !resetPassword.trim()} className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50">

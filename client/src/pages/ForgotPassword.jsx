@@ -1,26 +1,30 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Mail, Key, CheckCircle } from 'lucide-react';
 import PasswordInput from '../components/PasswordInput.jsx';
+import { validatePassword, PASSWORD_RULE } from '../lib/password.js';
 
 export default function ForgotPassword() {
-  const [step, setStep] = useState('email');
+  // The reset email links to /reset-password?token=..., so skip straight to
+  // the new-password step when we arrive that way.
+  const [params] = useSearchParams();
+  const urlToken = params.get('token') || '';
+
+  const [step, setStep] = useState(urlToken ? 'token' : 'email');
   const [email, setEmail] = useState('');
-  const [token, setToken] = useState('');
+  const [token, setToken] = useState(urlToken);
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resetToken, setResetToken] = useState('');
 
   const handleRequestReset = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const r = await axios.post('/api/auth/forgot-password', { email });
-      if (r.data.data.reset_token) setResetToken(r.data.data.reset_token);
+      await axios.post('/api/auth/forgot-password', { email });
       setStep('token');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed');
@@ -30,11 +34,12 @@ export default function ForgotPassword() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (newPassword !== confirm) { setError('Passwords do not match'); return; }
-    if (newPassword.length < 6) { setError('Password must be at least 6 characters'); return; }
+    const pwError = validatePassword(newPassword);
+    if (pwError) { setError(pwError); return; }
     setLoading(true);
     setError('');
     try {
-      await axios.post('/api/auth/reset-password', { token: token || resetToken, new_password: newPassword });
+      await axios.post('/api/auth/reset-password', { token, new_password: newPassword });
       setStep('done');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed');
@@ -70,17 +75,14 @@ export default function ForgotPassword() {
             <div className="text-center mb-6">
               <Key className="mx-auto text-blue-600 mb-3" size={40} />
               <h2 className="text-xl font-bold text-gray-900">Reset Password</h2>
-              <p className="text-sm text-gray-500 mt-1">Enter the reset token and your new password</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {urlToken
+                  ? 'Choose a new password for your account.'
+                  : 'If that email is registered, a reset token is on its way. Paste it below with your new password.'}
+              </p>
             </div>
-            {resetToken && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
-                <p className="text-blue-800 font-medium">Your reset token:</p>
-                <p className="text-blue-600 text-xs font-mono mt-1 break-all">{resetToken}</p>
-                <p className="text-blue-500 text-xs mt-1">(In production this would be sent via email)</p>
-              </div>
-            )}
             {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">{error}</div>}
-            {!resetToken && (
+            {!urlToken && (
               <input value={token} onChange={e => setToken(e.target.value)} required placeholder="Reset token"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
             )}
@@ -88,8 +90,9 @@ export default function ForgotPassword() {
               wrapperClassName="mb-3"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
             <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} required placeholder="Confirm new password"
-              wrapperClassName="mb-4"
+              wrapperClassName="mb-2"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            <p className="text-xs text-gray-400 mb-4">{PASSWORD_RULE}</p>
             <button type="submit" disabled={loading}
               className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 font-medium">
               {loading ? 'Resetting...' : 'Reset Password'}
