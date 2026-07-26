@@ -104,9 +104,9 @@ export default function InterviewCalendar() {
   const interviewCount = interviews.length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Interview Calendar</h1>
+        <h1 className="text-xl font-bold text-gray-900">Interview Calendar</h1>
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Calendar size={16} />
           <span>{interviewCount} interview{interviewCount !== 1 ? 's' : ''} this month</span>
@@ -114,8 +114,8 @@ export default function InterviewCalendar() {
       </div>
 
       {/* Month navigation */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
               <ChevronLeft size={20} className="text-gray-600" />
@@ -135,7 +135,7 @@ export default function InterviewCalendar() {
         {/* Day headers */}
         <div className="grid grid-cols-7 mb-1">
           {DAYS.map(d => (
-            <div key={d} className="py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div key={d} className="py-1 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
               {d}
             </div>
           ))}
@@ -153,7 +153,7 @@ export default function InterviewCalendar() {
               return (
                 <div
                   key={idx}
-                  className={`min-h-[100px] border-r border-b border-gray-200 p-1.5 transition-colors ${
+                  className={`min-h-[70px] border-r border-b border-gray-200 p-1 transition-colors ${
                     cell.isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                   } ${isToday ? 'ring-2 ring-inset ring-blue-500' : ''}`}
                 >
@@ -166,7 +166,7 @@ export default function InterviewCalendar() {
                   }`}>
                     {cell.day}
                   </div>
-                  <div className="space-y-0.5 overflow-y-auto max-h-[72px]">
+                  <div className="space-y-0.5 overflow-y-auto max-h-[44px]">
                     {cell.interviews.map(iv => (
                       <button
                         key={iv.id}
@@ -190,7 +190,7 @@ export default function InterviewCalendar() {
         )}
 
         {/* Legend */}
-        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
           <span className="text-xs text-gray-400">Status:</span>
           {Object.entries({ scheduled: 'Scheduled', completed: 'Completed', no_show: 'No Show', cancelled: 'Cancelled' }).map(([key, label]) => (
             <span key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
