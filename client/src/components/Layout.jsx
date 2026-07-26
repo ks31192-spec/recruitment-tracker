@@ -35,12 +35,12 @@ export default function Layout() {
     <div className="flex h-screen bg-gray-50">
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-5 border-b border-gray-200">
-          <h1 className="text-lg font-bold text-blue-700">A M World School</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Recruitment Tracker</p>
+        <div className="px-4 py-3 border-b border-gray-200">
+          <h1 className="text-lg font-bold text-blue-700 leading-tight">A M World School</h1>
+          <p className="text-xs text-gray-500">Recruitment Tracker</p>
         </div>
 
-        <button onClick={openSearch} className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+        <button onClick={openSearch} className="mx-3 mt-2 flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
           <Search size={15} />
           <span className="flex-1 text-left">Search...</span>
           <kbd className="text-xs bg-white px-1.5 py-0.5 rounded border border-gray-200">Ctrl+K</kbd>
