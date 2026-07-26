@@ -23,6 +23,7 @@ import Reports from './pages/Reports.jsx';
 import AuditLog from './pages/AuditLog.jsx';
 import Referrals from './pages/Referrals.jsx';
 import CandidatePortal from './pages/CandidatePortal.jsx';
+import Duplicates from './pages/Duplicates.jsx';
 import Settings from './pages/Settings.jsx';
 
 function ProtectedRoute({ children }) {
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="candidates/new" element={<CandidateForm />} />
           <Route path="candidates/:id/edit" element={<CandidateForm />} />
           <Route path="candidates/:id" element={<CandidateDetail />} />
+          <Route path="duplicates" element={<Duplicates />} />
           <Route path="interviews" element={<Interviews />} />
           <Route path="interviews/calendar" element={<InterviewCalendar />} />
           <Route path="follow-ups" element={<FollowUps />} />

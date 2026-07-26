@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { LayoutDashboard, Briefcase, Users, CalendarCheck, Calendar, Bell, BarChart3, Columns3, FileText, Shield, Settings, LogOut, Menu, Search, Globe, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, CalendarCheck, Calendar, Bell, BarChart3, Columns3, FileText, Shield, Settings, LogOut, Menu, Search, Globe, UserPlus, Copy } from 'lucide-react';
 import { useState } from 'react';
 import NotificationBell from './NotificationBell.jsx';
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/vacancies', icon: Briefcase, label: 'Vacancies' },
   { to: '/candidates', icon: Users, label: 'Candidates' },
+  { to: '/duplicates', icon: Copy, label: 'Duplicates' },
   { to: '/interviews', icon: CalendarCheck, label: 'Interviews' },
   { to: '/interviews/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/follow-ups', icon: Bell, label: 'Follow-ups' },
