@@ -60,18 +60,16 @@ export default function Layout() {
             Careers Page
           </a>
         </nav>
-        <div className="p-3 border-t border-gray-200">
-          <div className="px-3 py-2 mb-2 flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{user?.name}</p>
-              <p className="text-xs text-gray-500 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
-            </div>
-            <div className="hidden lg:block">
-              <NotificationBell />
-            </div>
+        <div className="px-3 py-2 border-t border-gray-200 flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-800 truncate">{user?.name}</p>
+            <p className="text-xs text-gray-500 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <LogOut size={16} /> Logout
+          <div className="hidden lg:block">
+            <NotificationBell />
+          </div>
+          <button onClick={handleLogout} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+            <LogOut size={16} />
           </button>
         </div>
       </aside>
