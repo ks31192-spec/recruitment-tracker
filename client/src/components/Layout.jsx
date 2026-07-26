@@ -4,7 +4,7 @@ import { LayoutDashboard, Briefcase, Users, CalendarCheck, Calendar, Bell, BarCh
 import { useState } from 'react';
 import NotificationBell from './NotificationBell.jsx';
 
-const navItems = [
+export const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/vacancies', icon: Briefcase, label: 'Vacancies' },
   { to: '/candidates', icon: Users, label: 'Candidates' },
