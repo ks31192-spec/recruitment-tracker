@@ -63,26 +63,21 @@ export default function PWAPrompt() {
   return (
     <>
       {needRefresh && (
-        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 animate-slide-up">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-              <RefreshCw size={20} className="text-blue-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm">Update Available</p>
-              <p className="text-xs text-gray-500 mt-0.5">A new version is ready. Reload to get the latest features.</p>
-            </div>
-            <button onClick={() => setNeedRefresh(false)} className="p-1 text-gray-400 hover:text-gray-600 shrink-0">
-              <X size={16} />
+        <div className="fixed bottom-3 right-3 z-50 bg-white rounded-xl shadow-lg border border-gray-200 p-3 w-72 animate-slide-up">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={16} className="text-blue-600 shrink-0" />
+            <p className="text-sm font-medium text-gray-900 flex-1">Update available</p>
+            <button onClick={() => setNeedRefresh(false)} className="p-0.5 text-gray-400 hover:text-gray-600 shrink-0">
+              <X size={14} />
             </button>
           </div>
-          <div className="flex gap-2 mt-3">
-            <button onClick={() => updateServiceWorker(true)}
-              className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-cyan-600 transition-all">
-              Reload Now
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => { updateServiceWorker(true).then(() => window.location.reload()).catch(() => window.location.reload()); }}
+              className="flex-1 px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              Reload
             </button>
             <button onClick={() => setNeedRefresh(false)}
-              className="px-3 py-2 text-gray-600 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+              className="px-2 py-1.5 text-gray-500 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
               Later
             </button>
           </div>
