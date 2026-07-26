@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
 import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette } from 'lucide-react';
@@ -322,6 +322,29 @@ function EmailTemplatesTab() {
   );
 }
 
+function resizeImage(file, maxSize = 200) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/png', 0.9));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function BrandingTab() {
   const toast = useToast();
   const branding = useBranding();
@@ -330,8 +353,11 @@ function BrandingTab() {
     school_tagline: '',
     school_short: '',
   });
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [logoChanged, setLogoChanged] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     api.get('/branding').then(r => {
@@ -341,6 +367,7 @@ function BrandingTab() {
           school_tagline: r.data.data.school_tagline || 'Empowering Education Since 2010',
           school_short: r.data.data.school_short || 'AM',
         });
+        if (r.data.data.school_logo) setLogoPreview(r.data.data.school_logo);
       } else {
         setForm({
           school_name: branding.schoolName,
@@ -357,6 +384,22 @@ function BrandingTab() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+    const dataUrl = await resizeImage(file, 200);
+    setLogoPreview(dataUrl);
+    setLogoChanged(true);
+  };
+
+  const removeLogo = () => {
+    setLogoPreview(null);
+    setLogoChanged(true);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
   const handleSave = async () => {
     if (!form.school_name.trim() || !form.school_short.trim()) {
       toast.error('School name and short name are required');
@@ -364,8 +407,12 @@ function BrandingTab() {
     }
     setSaving(true);
     try {
-      await api.put('/branding', form);
-      toast.success('Branding updated! Reload the page to see changes everywhere.');
+      const payload = { ...form };
+      if (logoChanged) payload.school_logo = logoPreview || '';
+      await api.put('/branding', payload);
+      branding.refresh();
+      toast.success('Branding updated!');
+      setLogoChanged(false);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to save branding');
     } finally {
@@ -379,7 +426,7 @@ function BrandingTab() {
     <div className="space-y-6">
       <div>
         <h3 className="font-semibold text-gray-900 mb-1">School Branding</h3>
-        <p className="text-sm text-gray-500 mb-4">Customize the school name and branding shown across the recruitment platform, careers page, and candidate portal.</p>
+        <p className="text-sm text-gray-500 mb-4">Customize the school name, logo, and branding shown across the recruitment platform, careers page, and candidate portal.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -410,19 +457,69 @@ function BrandingTab() {
             maxLength={4}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           />
+          <p className="text-xs text-gray-400 mt-1">Used as fallback when no logo is uploaded</p>
         </div>
       </div>
 
-      {/* Logo Preview */}
+      {/* Logo Upload */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Logo Preview</label>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center">
-            <span className="text-2xl font-bold text-white">{form.school_short || 'AM'}</span>
+        <label className="block text-sm font-medium text-gray-700 mb-2">School Logo</label>
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 shrink-0">
+            {logoPreview ? (
+              <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center">
+                <span className="text-xl font-bold text-white">{form.school_short || 'AM'}</span>
+              </div>
+            )}
           </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">{form.school_name || 'School Name'}</p>
-            <p className="text-xs text-gray-500">{form.school_tagline || 'Tagline'}</p>
+          <div className="space-y-2">
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+            <button onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              <Upload size={14} /> Upload Logo
+            </button>
+            {logoPreview && (
+              <button onClick={removeLogo}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                <Trash2 size={14} /> Remove
+              </button>
+            )}
+            <p className="text-xs text-gray-400">PNG, JPG, or SVG. Max 5MB. Will be resized to 200x200px.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Preview */}
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Live Preview</label>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 bg-gradient-to-b from-slate-900 to-slate-800 rounded-xl p-4">
+            {logoPreview ? (
+              <img src={logoPreview} alt="" className="w-10 h-10 rounded-lg object-contain" />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center">
+                <span className="text-sm font-bold text-white">{form.school_short || 'AM'}</span>
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">{form.school_name || 'School Name'}</p>
+              <p className="text-xs text-slate-400">Recruitment Tracker</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 bg-white rounded-xl p-4 border border-gray-200">
+            {logoPreview ? (
+              <img src={logoPreview} alt="" className="w-14 h-14 rounded-2xl object-contain" />
+            ) : (
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center">
+                <span className="text-xl font-bold text-white">{form.school_short || 'AM'}</span>
+              </div>
+            )}
+            <div>
+              <p className="text-lg font-bold text-gray-900">{form.school_name || 'School Name'}</p>
+              <p className="text-sm text-gray-500">{form.school_tagline || 'Tagline'}</p>
+            </div>
           </div>
         </div>
       </div>

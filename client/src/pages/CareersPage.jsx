@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { Briefcase, MapPin, Clock, GraduationCap, IndianRupee, ChevronRight, Users, Search, Building2 } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext.jsx';
+import SchoolLogo from '../components/SchoolLogo.jsx';
 
 export default function CareersPage() {
   const [vacancies, setVacancies] = useState([]);
@@ -30,9 +31,7 @@ export default function CareersPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Building2 size={20} className="text-white" />
-            </div>
+            <SchoolLogo size={40} rounded="rounded-xl" />
             <div>
               <h1 className="text-lg font-bold text-gray-900">{schoolName}</h1>
               <p className="text-xs text-gray-500">{schoolTagline}</p>

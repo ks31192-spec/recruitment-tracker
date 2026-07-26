@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Send, CheckCircle, Briefcase, MapPin, GraduationCap, Plus, Trash2 } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext.jsx';
+import SchoolLogo from '../components/SchoolLogo.jsx';
 
 const qualLevels = ['10th (Secondary)', '12th (Sr. Secondary)', 'Graduation', 'Post Graduation', 'B.Ed', 'D.El.Ed', 'Diploma', 'Ph.D', 'Other'];
 const emptyQual = () => ({ degree: '', specialization: '', university: '', year_of_passing: '', percentage_or_cgpa: '', is_appearing: false });
@@ -110,6 +111,7 @@ export default function PublicApply() {
       <header className="bg-white shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
           <Link to="/careers" className="p-2 hover:bg-gray-100 rounded-lg"><ArrowLeft size={20} /></Link>
+          <SchoolLogo size={36} rounded="rounded-lg" />
           <div>
             <h1 className="text-lg font-bold text-blue-700">{schoolName}</h1>
             <p className="text-xs text-gray-500">Job Application</p>

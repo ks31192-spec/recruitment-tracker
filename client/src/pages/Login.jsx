@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useBranding } from '../context/BrandingContext.jsx';
+import SchoolLogo from '../components/SchoolLogo.jsx';
 import { LogIn } from 'lucide-react';
 
 export default function Login() {
@@ -31,8 +32,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-4">
       <div className="w-full max-w-md backdrop-blur-xl bg-white/95 rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl font-bold text-white">{schoolShort}</span>
+          <div className="mx-auto mb-4 w-16 h-16">
+            <SchoolLogo size={64} rounded="rounded-2xl" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{schoolName}</h1>
           <p className="text-gray-500 mt-1">Recruitment Management System</p>

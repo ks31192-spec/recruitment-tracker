@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { LayoutDashboard, Briefcase, Users, CalendarCheck, Calendar, Bell, BarChart3, Columns3, FileText, Shield, Settings, LogOut, Menu, Search, Globe, UserPlus, Copy, UserCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useBranding } from '../context/BrandingContext.jsx';
+import SchoolLogo from './SchoolLogo.jsx';
 import NotificationBell from './NotificationBell.jsx';
 
 export const navItems = [
@@ -24,7 +25,7 @@ export const navItems = [
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const { schoolName } = useBranding();
+  const { schoolName, schoolLogo } = useBranding();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -38,9 +39,12 @@ export default function Layout() {
     <div className="flex h-screen bg-gray-50">
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 flex flex-col transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="px-4 py-3 border-b border-slate-700">
-          <h1 className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-tight">{schoolName}</h1>
-          <p className="text-xs text-slate-400">Recruitment Tracker</p>
+        <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+          <SchoolLogo size={36} rounded="rounded-lg" />
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-tight truncate">{schoolName}</h1>
+            <p className="text-xs text-slate-400">Recruitment Tracker</p>
+          </div>
         </div>
 
         <button onClick={openSearch} className="mx-3 mt-2 flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400 bg-slate-700/50 rounded-lg border border-slate-600 hover:bg-slate-700 transition-colors">

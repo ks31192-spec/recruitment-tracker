@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useBranding } from '../context/BrandingContext.jsx';
+import SchoolLogo from '../components/SchoolLogo.jsx';
 
 const STAGES_PIPELINE = [
   'applied',
@@ -187,7 +188,7 @@ export default function CandidatePortal() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
         <div className="relative max-w-4xl mx-auto px-4 py-6 flex items-center gap-3">
-          <Shield className="w-8 h-8" />
+          <SchoolLogo size={36} rounded="rounded-lg" />
           <div>
             <h1 className="text-xl font-bold">{schoolName}</h1>
             <p className="text-white/70 text-sm">Candidate Portal</p>
