@@ -163,6 +163,9 @@ export function ensureReady() {
           ['candidate_experience', 'subjects_taught', 'TEXT'],
           ['candidate_experience', 'other_roles', 'TEXT'],
           ['offers', 'onboarding', 'TEXT'],
+          ['interviews', 'remarks', 'TEXT'],
+          ['interviews', 'remarks_by', 'INTEGER'],
+          ['interviews', 'remarks_at', 'TEXT'],
         ];
         for (const [table, col, def] of migrations) {
           const info = sqlDb.exec(`PRAGMA table_info(${table})`);

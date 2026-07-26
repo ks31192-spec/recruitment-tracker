@@ -154,6 +154,9 @@ CREATE TABLE IF NOT EXISTS interviews (
   demo_duration_minutes INTEGER,
   status TEXT NOT NULL DEFAULT 'scheduled' CHECK(status IN ('scheduled','completed','no_show','cancelled','rescheduled')),
   rescheduled_from_id INTEGER REFERENCES interviews(id),
+  remarks TEXT,
+  remarks_by INTEGER REFERENCES users(id),
+  remarks_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -126,6 +126,12 @@ function EventCard({ event }) {
             {event.vacancy_title && (
               <p className="text-xs text-gray-400">For: {event.vacancy_title}</p>
             )}
+            {event.remarks && (
+              <p className="text-sm text-gray-700 mt-1.5 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                <span className="text-xs font-medium text-gray-400 block mb-0.5">Remarks</span>
+                {event.remarks}
+              </p>
+            )}
           </>
         );
       case 'communication':

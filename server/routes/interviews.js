@@ -40,6 +40,34 @@ router.put('/:id', async (req, res) => {
   res.json({ success: true, data: { id: +req.params.id } });
 });
 
+// All interviews & demos for a candidate, with remarks + author name
+router.get('/candidate/:candidateId', async (req, res) => {
+  const rows = await db.prepare(`SELECT i.*, v.title as vacancy_title, u.name as remarks_by_name
+    FROM interviews i
+    JOIN applications a ON i.application_id = a.id
+    JOIN vacancies v ON a.vacancy_id = v.id
+    LEFT JOIN users u ON i.remarks_by = u.id
+    WHERE a.candidate_id = ?
+    ORDER BY i.scheduled_date DESC, i.scheduled_time DESC`).all(req.params.candidateId);
+  res.json({ success: true, data: rows });
+});
+
+// Save/update the institution's remarks for an interview or demo
+router.put('/:id/remarks', async (req, res) => {
+  const { remarks, status } = req.body;
+  const existing = await db.prepare('SELECT id FROM interviews WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ success: false, error: 'Interview not found' });
+  if (status) {
+    await db.prepare(`UPDATE interviews SET remarks=?, remarks_by=?, remarks_at=datetime('now'), status=?, updated_at=datetime('now') WHERE id=?`)
+      .run(remarks || null, req.user.id, status, req.params.id);
+  } else {
+    await db.prepare(`UPDATE interviews SET remarks=?, remarks_by=?, remarks_at=datetime('now'), updated_at=datetime('now') WHERE id=?`)
+      .run(remarks || null, req.user.id, req.params.id);
+  }
+  const row = await db.prepare(`SELECT i.*, u.name as remarks_by_name FROM interviews i LEFT JOIN users u ON i.remarks_by = u.id WHERE i.id = ?`).get(req.params.id);
+  res.json({ success: true, data: row });
+});
+
 router.post('/:id/evaluate', async (req, res) => {
   const { subject_knowledge, communication, teaching_aptitude, confidence_personality, tech_comfort, overall_impression, strengths, concerns, recommendation, private_notes } = req.body;
   try {

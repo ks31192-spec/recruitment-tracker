@@ -9,6 +9,7 @@ import StructuredEvaluation from '../components/StructuredEvaluation.jsx';
 import CommunicationModal from '../components/CommunicationModal.jsx';
 import OfferModal from '../components/OfferModal.jsx';
 import CandidateTimeline from '../components/CandidateTimeline.jsx';
+import InterviewRemarks from '../components/InterviewRemarks.jsx';
 import { ArrowLeft, Edit, Briefcase, FileText, Phone, Mail, MapPin, Plus, CalendarCheck, MessageCircle, Star, Gift, Upload, Tag, X, ShieldBan, StickyNote, Trash2, Download, ChevronDown, Clock, Eye, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
 
 const sourceLabels = { walk_in: 'Walk-in', naukri: 'Naukri', whatsapp: 'WhatsApp', referral: 'Referral', website: 'Website', direct_call: 'Direct Call', other: 'Other' };
@@ -261,7 +262,7 @@ export default function CandidateDetail() {
 
   if (!candidate) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
 
-  const tabs = ['overview', 'applications', 'qualifications', 'experience', 'verification', 'documents', 'timeline', 'notes'];
+  const tabs = ['overview', 'applications', 'interviews', 'qualifications', 'experience', 'verification', 'documents', 'timeline', 'notes'];
   const verifiedCount = verifications.filter(v => v.status === 'verified').length;
   const interviews = timeline.filter(e => e.type === 'interview');
 
@@ -537,6 +538,10 @@ export default function CandidateDetail() {
               </div>
             ))}
           </div>
+        )}
+
+        {tab === 'interviews' && (
+          <InterviewRemarks candidateId={+id} />
         )}
 
         {tab === 'timeline' && (
