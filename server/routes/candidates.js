@@ -508,4 +508,20 @@ router.delete('/:id/blacklist', authorize('super_admin', 'admin'), async (req, r
   res.json({ success: true, data: { message: 'Removed from blacklist' } });
 });
 
+router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
+  const c = await db.prepare('SELECT id FROM candidates WHERE id = ?').get(req.params.id);
+  if (!c) return res.status(404).json({ success: false, error: 'Not found' });
+  await db.prepare('DELETE FROM candidate_notes WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM candidate_tags WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM candidate_qualifications WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM candidate_experience WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM documents WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM blacklist WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM communication_log WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM candidate_portal_tokens WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM applications WHERE candidate_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM candidates WHERE id = ?').run(req.params.id);
+  res.json({ success: true, data: { message: 'Candidate deleted' } });
+});
+
 export default router;

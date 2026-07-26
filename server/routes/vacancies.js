@@ -197,4 +197,14 @@ router.get('/:id/cost-summary', async (req, res) => {
   res.json({ success: true, data: { total, breakdown, joined_count: joined, cost_per_hire: costPerHire } });
 });
 
+router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
+  const v = await db.prepare('SELECT id FROM vacancies WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ success: false, error: 'Not found' });
+  await db.prepare('DELETE FROM screening_questions WHERE vacancy_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM document_checklist WHERE vacancy_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM recruitment_costs WHERE vacancy_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM vacancies WHERE id = ?').run(req.params.id);
+  res.json({ success: true, data: { message: 'Vacancy deleted' } });
+});
+
 export default router;
