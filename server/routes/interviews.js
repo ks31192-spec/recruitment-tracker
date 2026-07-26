@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { createNotification } from './notifications.js';
+import { sendInterviewInvite } from '../lib/email.js';
 
 const router = Router();
 router.use(authenticate);
@@ -13,15 +14,23 @@ router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   }
   const r = await db.prepare(`INSERT INTO interviews (application_id, interview_type, scheduled_date, scheduled_time, mode, location_or_link, demo_topic, demo_class, demo_duration_minutes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(application_id, interview_type, scheduled_date, scheduled_time || null, mode || 'in_person', location_or_link || null, demo_topic || null, demo_class || null, demo_duration_minutes || null);
-  if (panel_member_ids?.length) {
-    // Look up candidate + vacancy once to compose the panel notification.
-    const info = await db.prepare(`SELECT c.full_name, c.id as candidate_id, v.title as vacancy_title
-      FROM applications a JOIN candidates c ON a.candidate_id = c.id JOIN vacancies v ON a.vacancy_id = v.id
-      WHERE a.id = ?`).get(application_id);
+  const info = await db.prepare(`SELECT c.full_name, c.email, c.id as candidate_id, v.title as vacancy_title
+    FROM applications a JOIN candidates c ON a.candidate_id = c.id JOIN vacancies v ON a.vacancy_id = v.id
+    WHERE a.id = ?`).get(application_id);
+
+  // Email interview invite to candidate
+  if (info?.email && req.body.send_email !== false) {
+    sendInterviewInvite(info.email, info.full_name, {
+      vacancyTitle: info.vacancy_title, interviewType: interview_type,
+      date: scheduled_date, time: scheduled_time, mode: mode || 'in_person', location: location_or_link,
+    }).catch(() => {});
+  }
+
+  if (panel_member_ids?.length && info) {
     const when = scheduled_time ? `${scheduled_date} at ${scheduled_time}` : scheduled_date;
     for (const uid of panel_member_ids) {
       await db.prepare('INSERT INTO interview_panel (interview_id, user_id) VALUES (?, ?)').run(r.lastInsertRowid, uid);
-      if (info && uid !== req.user.id) {
+      if (uid !== req.user.id) {
         try {
           await createNotification(uid, `${interview_type === 'demo' ? 'Demo' : 'Interview'} panel: ${info.full_name}`,
             `You're on the panel for ${info.full_name} (${info.vacancy_title}) on ${when}`,

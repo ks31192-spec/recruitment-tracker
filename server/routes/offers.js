@@ -2,6 +2,7 @@ import { Router } from 'express';
 import PDFDocument from 'pdfkit';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { sendOfferLetter } from '../lib/email.js';
 
 const router = Router();
 router.use(authenticate);
@@ -23,6 +24,18 @@ router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   if (!application_id) return res.status(400).json({ success: false, error: 'application_id required' });
   const r = await db.prepare(`INSERT INTO offers (application_id, designation_offered, salary_offered, joining_date_proposed) VALUES (?, ?, ?, ?)`)
     .run(application_id, designation_offered || null, salary_offered || null, joining_date_proposed || null);
+
+  // Email the offer to the candidate
+  const info = await db.prepare(`SELECT c.full_name, c.email, v.title as vacancy_title
+    FROM applications a JOIN candidates c ON a.candidate_id = c.id JOIN vacancies v ON a.vacancy_id = v.id
+    WHERE a.id = ?`).get(application_id);
+  if (info?.email) {
+    sendOfferLetter(info.email, info.full_name, {
+      designation: designation_offered, salary: salary_offered,
+      joiningDate: joining_date_proposed, vacancyTitle: info.vacancy_title,
+    }).catch(() => {});
+  }
+
   res.json({ success: true, data: { id: r.lastInsertRowid } });
 });
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
-import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette, Send, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useBranding } from '../context/BrandingContext.jsx';
 
@@ -538,6 +538,122 @@ function BrandingTab() {
   );
 }
 
+function EmailSettingsTab() {
+  const toast = useToast();
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [testEmail, setTestEmail] = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    api.get('/email/status').then(r => setStatus(r.data.data)).catch(() => setStatus({ configured: false })).finally(() => setLoading(false));
+  }, []);
+
+  const sendTest = async () => {
+    if (!testEmail.trim()) return;
+    setSending(true);
+    try {
+      await api.post('/email/test', { to: testEmail });
+      toast.success('Test email sent! Check your inbox.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to send test email');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-semibold text-gray-900 mb-1">Email Configuration</h3>
+        <p className="text-sm text-gray-500 mb-4">Emails are sent automatically for password resets, interview invitations, offer letters, and rejections.</p>
+      </div>
+
+      <div className={`rounded-xl border p-4 ${status?.configured ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+        <div className="flex items-center gap-3">
+          {status?.configured ? (
+            <CheckCircle2 size={20} className="text-green-600 shrink-0" />
+          ) : (
+            <XCircle size={20} className="text-red-500 shrink-0" />
+          )}
+          <div>
+            <p className={`font-medium text-sm ${status?.configured ? 'text-green-800' : 'text-red-800'}`}>
+              {status?.configured ? 'Email is configured and ready' : 'Email is not configured'}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {status?.configured ? (
+                <>Provider: {status.provider} &middot; From: {status.from}</>
+              ) : (
+                <>Set the <code className="bg-white/60 px-1 rounded text-xs">RESEND_API_KEY</code> environment variable in Vercel to enable email sending.</>
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {status?.configured && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Send Test Email</h4>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={testEmail}
+              onChange={e => setTestEmail(e.target.value)}
+              placeholder="Enter email address..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              onKeyDown={e => e.key === 'Enter' && sendTest()}
+            />
+            <button
+              onClick={sendTest}
+              disabled={sending || !testEmail.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Send size={14} /> {sending ? 'Sending...' : 'Send Test'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Automatic Emails</h4>
+        <div className="space-y-2">
+          {[
+            { label: 'Password Reset', desc: 'Sent when a user requests to reset their password' },
+            { label: 'Interview Invitation', desc: 'Sent to candidates when an interview or demo is scheduled' },
+            { label: 'Offer Letter', desc: 'Sent to candidates when an offer is created' },
+            { label: 'Rejection Notice', desc: 'Sent to candidates when their application is rejected' },
+            { label: 'Custom Emails', desc: 'Sent via the Communication modal using templates or custom content' },
+          ].map(item => (
+            <div key={item.label} className="flex items-start gap-3 py-2">
+              <Mail size={14} className="text-blue-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">{item.label}</p>
+                <p className="text-xs text-gray-500">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {!status?.configured && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <h4 className="text-sm font-medium text-blue-800 mb-2">Setup Instructions</h4>
+          <ol className="text-xs text-blue-700 space-y-1.5 list-decimal list-inside">
+            <li>Create a free account at <strong>resend.com</strong></li>
+            <li>Verify your domain or use the free testing domain</li>
+            <li>Generate an API key from the Resend dashboard</li>
+            <li>Add <code className="bg-white/60 px-1 rounded">RESEND_API_KEY</code> to your Vercel environment variables</li>
+            <li>Optionally set <code className="bg-white/60 px-1 rounded">EMAIL_FROM</code> (e.g., "School Name &lt;hr@yourdomain.com&gt;")</li>
+            <li>Redeploy the application</li>
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DataTab() {
   const toast = useToast();
   const [importing, setImporting] = useState(false);
@@ -625,7 +741,7 @@ export default function Settings() {
   const [tab, setTab] = useState('branding');
   const tabs = ['branding', 'departments', 'designations', 'academic-years'];
   if (user?.role === 'super_admin' || user?.role === 'admin') tabs.push('email-templates');
-  if (user?.role === 'super_admin') tabs.push('users', 'data');
+  if (user?.role === 'super_admin') tabs.push('email', 'users', 'data');
 
   return (
     <div className="space-y-5">
@@ -651,6 +767,7 @@ export default function Settings() {
         {tab === 'designations' && <EditableList endpoint="/settings/designations" nameKey="title" label="Designation" />}
         {tab === 'academic-years' && <EditableList endpoint="/settings/academic-years" nameKey="label" label="Academic Year" />}
         {tab === 'email-templates' && <EmailTemplatesTab />}
+        {tab === 'email' && <EmailSettingsTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'data' && <DataTab />}
       </div>

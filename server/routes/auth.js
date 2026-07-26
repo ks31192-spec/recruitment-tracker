@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { sendPasswordReset } from '../lib/email.js';
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -73,7 +74,9 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
   const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   await db.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expires);
 
-  res.json({ success: true, data: { message: 'If that email exists, a reset link has been generated' } });
+  sendPasswordReset(user.email, user.name, token).catch(() => {});
+
+  res.json({ success: true, data: { message: 'If that email exists, a reset link has been sent' } });
 });
 
 router.post('/reset-password', authLimiter, async (req, res) => {

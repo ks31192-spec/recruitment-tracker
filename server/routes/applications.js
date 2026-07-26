@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { createNotification } from './notifications.js';
+import { sendRejection } from '../lib/email.js';
 
 const router = Router();
 router.use(authenticate);
@@ -55,6 +56,17 @@ router.put('/:id/stage', authorize('super_admin', 'admin', 'hr'), async (req, re
   await db.prepare(`INSERT INTO application_stage_history (application_id, from_stage, to_stage, changed_by, reason) VALUES (?, ?, ?, ?, ?)`)
     .run(req.params.id, app.current_stage, stage, req.user.id, reason || null);
   await notifyStageChange(req.params.id, stage, req.user);
+
+  // Email rejection notification to candidate
+  if (stage === 'rejected') {
+    const info = await db.prepare(`SELECT c.full_name, c.email, v.title as vacancy_title
+      FROM applications a JOIN candidates c ON a.candidate_id = c.id JOIN vacancies v ON a.vacancy_id = v.id
+      WHERE a.id = ?`).get(req.params.id);
+    if (info?.email) {
+      sendRejection(info.email, info.full_name, { vacancyTitle: info.vacancy_title, reason: reason || null }).catch(() => {});
+    }
+  }
+
   res.json({ success: true, data: { id: +req.params.id, stage } });
 });
 
