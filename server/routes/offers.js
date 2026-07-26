@@ -87,7 +87,10 @@ function fmtSalary(v) {
   return v ? `Rs. ${Number(v).toLocaleString('en-IN')}` : 'As discussed';
 }
 
-function generateOfferPDF(offer, res) {
+async function generateOfferPDF(offer, res) {
+  const nameRow = await db.prepare("SELECT value FROM site_settings WHERE key = 'school_name'").get();
+  const schoolName = nameRow?.value || 'A M World School';
+
   const doc = new PDFDocument({ size: 'A4', margins: { top: 72, bottom: 72, left: 72, right: 72 } });
 
   const filename = `offer-letter-${offer.full_name.replace(/\s+/g, '-')}.pdf`;
@@ -101,7 +104,7 @@ function generateOfferPDF(offer, res) {
   const pw = 451; // page width minus margins
 
   // Header
-  doc.fontSize(20).fillColor(blue).text('A M World School', { align: 'center' });
+  doc.fontSize(20).fillColor(blue).text(schoolName, { align: 'center' });
   doc.fontSize(10).fillColor(gray).text('Excellence in Education', { align: 'center' });
   doc.moveDown(0.5);
   const y = doc.y;
@@ -132,7 +135,7 @@ function generateOfferPDF(offer, res) {
   doc.fontSize(11).fillColor(black).font('Helvetica');
   doc.text(`Dear ${offer.full_name},`);
   doc.moveDown(0.5);
-  doc.text('We are pleased to offer you the position at A M World School. Based on your qualifications, experience, and performance during the selection process, we are confident that you will be a valuable addition to our team.', { lineGap: 3 });
+  doc.text(`We are pleased to offer you the position at ${schoolName}. Based on your qualifications, experience, and performance during the selection process, we are confident that you will be a valuable addition to our team.`, { lineGap: 3 });
   doc.moveDown(0.8);
 
   // Details table
@@ -186,7 +189,7 @@ function generateOfferPDF(offer, res) {
   doc.font('Helvetica-Bold').text(`${deadline}.`, { continued: false });
   doc.font('Helvetica');
   doc.moveDown(0.5);
-  doc.text('We look forward to welcoming you to the A M World School family.');
+  doc.text(`We look forward to welcoming you to the ${schoolName} family.`);
   doc.moveDown(0.8);
   doc.text('Warm regards,');
 
@@ -196,7 +199,7 @@ function generateOfferPDF(offer, res) {
   doc.moveTo(330, sigY).lineTo(523, sigY).stroke();
   doc.fontSize(9).fillColor(gray);
   doc.text('Principal / Authorized Signatory', 72, sigY + 6, { width: 158, align: 'center' });
-  doc.text('A M World School', 72, sigY + 18, { width: 158, align: 'center' });
+  doc.text(schoolName, 72, sigY + 18, { width: 158, align: 'center' });
   doc.text('Candidate\'s Signature', 330, sigY + 6, { width: 193, align: 'center' });
   doc.text(offer.full_name, 330, sigY + 18, { width: 193, align: 'center' });
 
@@ -215,7 +218,7 @@ router.get('/:id/letter', async (req, res) => {
     WHERE o.id = ?`).get(req.params.id);
 
   if (!offer) return res.status(404).json({ success: false, error: 'Offer not found' });
-  generateOfferPDF(offer, res);
+  await generateOfferPDF(offer, res);
 });
 
 export default router;

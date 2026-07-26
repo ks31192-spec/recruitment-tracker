@@ -26,6 +26,7 @@ import analyticsRoutes from './routes/analytics.js';
 import notificationRoutes from './routes/notifications.js';
 import referralRoutes from './routes/referrals.js';
 import portalRoutes from './routes/portal.js';
+import brandingRoutes from './routes/branding.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -47,6 +48,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api', (req, res, next) => { ensureReady().then(() => refreshFromFirestore()).then(() => next()).catch(next); });
 
 // Public routes (no auth)
+app.use('/api/branding', brandingRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/portal', portalRoutes);
 

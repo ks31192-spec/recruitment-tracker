@@ -394,4 +394,10 @@ CREATE TABLE IF NOT EXISTS sla_config (
   updated_by INTEGER REFERENCES users(id),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Site Settings (branding etc.)
+CREATE TABLE IF NOT EXISTS site_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;

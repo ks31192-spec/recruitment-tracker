@@ -194,6 +194,15 @@ export function ensureReady() {
 
       execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2025-26', '2025-04-01', '2026-03-31', 1]);
       execute('INSERT OR IGNORE INTO academic_years (label, start_date, end_date, is_current) VALUES (?, ?, ?, ?)', ['2024-25', '2024-04-01', '2025-03-31', 0]);
+
+      const defaultSettings = [
+        ['school_name', 'A M World School'],
+        ['school_tagline', 'Empowering Education Since 2010'],
+        ['school_short', 'AM'],
+      ];
+      for (const [key, value] of defaultSettings) {
+        execute('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)', [key, value]);
+      }
       save();
 
       if (loadedFromFirestore) {

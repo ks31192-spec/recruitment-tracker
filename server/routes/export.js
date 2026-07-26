@@ -56,9 +56,12 @@ router.get('/vacancy-report/:id', async (req, res) => {
   const gray = '#666666';
   const pw = 747; // landscape A4 minus margins
 
+  const nameRow = await db.prepare("SELECT value FROM site_settings WHERE key = 'school_name'").get();
+  const schoolName = nameRow?.value || 'A M World School';
+
   // Header
   doc.fontSize(16).fillColor(blue).font('Helvetica-Bold').text('Vacancy Report', { align: 'center' });
-  doc.fontSize(10).fillColor(gray).font('Helvetica').text('A M World School', { align: 'center' });
+  doc.fontSize(10).fillColor(gray).font('Helvetica').text(schoolName, { align: 'center' });
   doc.moveDown(0.3);
   doc.moveTo(50, doc.y).lineTo(50 + pw, doc.y).lineWidth(1).strokeColor(blue).stroke();
   doc.moveDown(0.6);

@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import axios from 'axios';
+import { useBranding } from '../context/BrandingContext.jsx';
 
 const STAGES_PIPELINE = [
   'applied',
@@ -118,6 +119,7 @@ export default function CandidatePortal() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const { schoolName } = useBranding();
 
   const requestOtp = async () => {
     setError('');
@@ -187,7 +189,7 @@ export default function CandidatePortal() {
         <div className="relative max-w-4xl mx-auto px-4 py-6 flex items-center gap-3">
           <Shield className="w-8 h-8" />
           <div>
-            <h1 className="text-xl font-bold">A M World School</h1>
+            <h1 className="text-xl font-bold">{schoolName}</h1>
             <p className="text-white/70 text-sm">Candidate Portal</p>
           </div>
         </div>
@@ -420,7 +422,7 @@ export default function CandidatePortal() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-gray-400">
-        A M World School Recruitment Portal
+        {schoolName} Recruitment Portal
       </footer>
     </div>
   );

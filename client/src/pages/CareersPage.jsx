@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { Briefcase, MapPin, Clock, GraduationCap, IndianRupee, ChevronRight, Users, Search, Building2 } from 'lucide-react';
+import { useBranding } from '../context/BrandingContext.jsx';
 
 export default function CareersPage() {
   const [vacancies, setVacancies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
+  const { schoolName, schoolTagline } = useBranding();
 
   useEffect(() => {
     axios.get('/api/public/careers').then(r => setVacancies(r.data.data)).finally(() => setLoading(false));
@@ -32,8 +34,8 @@ export default function CareersPage() {
               <Building2 size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">A M World School</h1>
-              <p className="text-xs text-gray-500">Empowering Education Since 2010</p>
+              <h1 className="text-lg font-bold text-gray-900">{schoolName}</h1>
+              <p className="text-xs text-gray-500">{schoolTagline}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -213,7 +215,7 @@ export default function CareersPage() {
                 <Building2 size={16} className="text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">A M World School</p>
+                <p className="text-sm font-semibold text-gray-900">{schoolName}</p>
                 <p className="text-xs text-gray-500">Excellence in Education</p>
               </div>
             </div>
@@ -222,7 +224,7 @@ export default function CareersPage() {
               <span className="text-gray-300">|</span>
               <Link to="/login" className="hover:text-blue-600 transition-colors">Staff Login</Link>
             </div>
-            <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} A M World School. All rights reserved.</p>
+            <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} {schoolName}. All rights reserved.</p>
           </div>
         </div>
       </footer>

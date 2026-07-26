@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useBranding } from '../context/BrandingContext.jsx';
 import { LogIn } from 'lucide-react';
 
 export default function Login() {
@@ -9,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { schoolName, schoolShort } = useBranding();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -30,9 +32,9 @@ export default function Login() {
       <div className="w-full max-w-md backdrop-blur-xl bg-white/95 rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl font-bold text-white">AM</span>
+            <span className="text-2xl font-bold text-white">{schoolShort}</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">A M World School</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{schoolName}</h1>
           <p className="text-gray-500 mt-1">Recruitment Management System</p>
         </div>
 
@@ -62,7 +64,7 @@ export default function Login() {
           </div>
         </form>
       </div>
-      <p className="text-center text-white/60 text-sm mt-6">Powered by A M World School Recruitment</p>
+      <p className="text-center text-white/60 text-sm mt-6">{`Powered by ${schoolName} Recruitment`}</p>
     </div>
   );
 }

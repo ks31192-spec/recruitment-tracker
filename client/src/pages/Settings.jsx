@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
-import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
+import { useBranding } from '../context/BrandingContext.jsx';
 
 function EditableList({ endpoint, nameKey, label }) {
   const [items, setItems] = useState([]);
@@ -321,6 +322,125 @@ function EmailTemplatesTab() {
   );
 }
 
+function BrandingTab() {
+  const toast = useToast();
+  const branding = useBranding();
+  const [form, setForm] = useState({
+    school_name: '',
+    school_tagline: '',
+    school_short: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/branding').then(r => {
+      if (r.data.success && r.data.data) {
+        setForm({
+          school_name: r.data.data.school_name || 'A M World School',
+          school_tagline: r.data.data.school_tagline || 'Empowering Education Since 2010',
+          school_short: r.data.data.school_short || 'AM',
+        });
+      } else {
+        setForm({
+          school_name: branding.schoolName,
+          school_tagline: branding.schoolTagline,
+          school_short: branding.schoolShort,
+        });
+      }
+    }).catch(() => {
+      setForm({
+        school_name: branding.schoolName,
+        school_tagline: branding.schoolTagline,
+        school_short: branding.schoolShort,
+      });
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    if (!form.school_name.trim() || !form.school_short.trim()) {
+      toast.error('School name and short name are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put('/branding', form);
+      toast.success('Branding updated! Reload the page to see changes everywhere.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save branding');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-semibold text-gray-900 mb-1">School Branding</h3>
+        <p className="text-sm text-gray-500 mb-4">Customize the school name and branding shown across the recruitment platform, careers page, and candidate portal.</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">School Name</label>
+          <input
+            value={form.school_name}
+            onChange={e => setForm(f => ({ ...f, school_name: e.target.value }))}
+            placeholder="e.g. A M World School"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">School Tagline</label>
+          <input
+            value={form.school_tagline}
+            onChange={e => setForm(f => ({ ...f, school_tagline: e.target.value }))}
+            placeholder="e.g. Empowering Education Since 2010"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Short Name (Logo Initials)</label>
+          <input
+            value={form.school_short}
+            onChange={e => setForm(f => ({ ...f, school_short: e.target.value }))}
+            placeholder="e.g. AM"
+            maxLength={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Logo Preview */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Logo Preview</label>
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center">
+            <span className="text-2xl font-bold text-white">{form.school_short || 'AM'}</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">{form.school_name || 'School Name'}</p>
+            <p className="text-xs text-gray-500">{form.school_tagline || 'Tagline'}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-gray-200">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+        >
+          <Palette size={16} />
+          {saving ? 'Saving...' : 'Save Branding'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DataTab() {
   const toast = useToast();
   const [importing, setImporting] = useState(false);
@@ -405,8 +525,8 @@ function DataTab() {
 
 export default function Settings() {
   const { user } = useAuth();
-  const [tab, setTab] = useState('departments');
-  const tabs = ['departments', 'designations', 'academic-years'];
+  const [tab, setTab] = useState('branding');
+  const tabs = ['branding', 'departments', 'designations', 'academic-years'];
   if (user?.role === 'super_admin' || user?.role === 'admin') tabs.push('email-templates');
   if (user?.role === 'super_admin') tabs.push('users', 'data');
 
@@ -429,6 +549,7 @@ export default function Settings() {
         ))}
       </div>
       <div className="bg-white rounded-xl border border-gray-200 p-6">
+        {tab === 'branding' && <BrandingTab />}
         {tab === 'departments' && <EditableList endpoint="/settings/departments" nameKey="name" label="Department" />}
         {tab === 'designations' && <EditableList endpoint="/settings/designations" nameKey="title" label="Designation" />}
         {tab === 'academic-years' && <EditableList endpoint="/settings/academic-years" nameKey="label" label="Academic Year" />}
