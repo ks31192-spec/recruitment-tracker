@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useBranding } from '../context/BrandingContext.jsx';
 import SchoolLogo from '../components/SchoolLogo.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 import { LogIn } from 'lucide-react';
 
 export default function Login() {
@@ -48,7 +49,7 @@ export default function Login() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+            <PasswordInput value={password} onChange={e => setPassword(e.target.value)} required
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Enter password" />
           </div>
           <button type="submit" disabled={loading}

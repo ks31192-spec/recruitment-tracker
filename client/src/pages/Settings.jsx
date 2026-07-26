@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
 import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette, Send, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 import { useBranding } from '../context/BrandingContext.jsx';
 
 function EditableList({ endpoint, nameKey, label }) {
@@ -126,7 +127,7 @@ function UsersTab() {
         <form onSubmit={addUser} className="bg-gray-50 rounded-lg p-4 mb-4 grid md:grid-cols-2 gap-3">
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Name" required className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
           <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email" required className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Password" required className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <PasswordInput value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Password" required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
           <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
             <option value="admin">Admin</option><option value="hr">HR</option><option value="panel_member">Panel Member</option><option value="viewer">Viewer</option>
           </select>
@@ -170,12 +171,12 @@ function UsersTab() {
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Reset Password</h3>
             <p className="text-sm text-gray-500 mb-4">Set a new password for <span className="font-medium text-gray-700">{resetModal.name}</span> ({resetModal.email})</p>
-            <input
-              type="password"
+            <PasswordInput
               value={resetPassword}
               onChange={e => setResetPassword(e.target.value)}
               placeholder="Enter new password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-4"
+              wrapperClassName="mb-4"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               autoFocus
               onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
             />

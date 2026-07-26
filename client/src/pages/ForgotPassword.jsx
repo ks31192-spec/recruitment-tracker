@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Mail, Key, CheckCircle } from 'lucide-react';
+import PasswordInput from '../components/PasswordInput.jsx';
 
 export default function ForgotPassword() {
   const [step, setStep] = useState('email');
@@ -83,10 +84,12 @@ export default function ForgotPassword() {
               <input value={token} onChange={e => setToken(e.target.value)} required placeholder="Reset token"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
             )}
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required placeholder="New password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
-            <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required placeholder="Confirm new password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-4" />
+            <PasswordInput value={newPassword} onChange={e => setNewPassword(e.target.value)} required placeholder="New password"
+              wrapperClassName="mb-3"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} required placeholder="Confirm new password"
+              wrapperClassName="mb-4"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
             <button type="submit" disabled={loading}
               className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 font-medium">
               {loading ? 'Resetting...' : 'Reset Password'}
