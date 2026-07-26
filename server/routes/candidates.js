@@ -5,6 +5,8 @@ import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { PDFParse } from 'pdf-parse';
+import mammoth from 'mammoth';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const resumeDest = process.env.VERCEL ? '/tmp/uploads/resumes' : join(__dirname, '..', 'uploads', 'resumes');
@@ -77,54 +79,81 @@ function validateMandatory({ expected_salary, aadhar_number, current_salary, is_
 export { insertQualifications, insertExperience, validateMandatory };
 
 // --- Resume Parser (before /:id routes) ---
+// Extracts text from PDF, DOCX, and TXT files, then parses candidate info.
+async function extractText(filePath, ext) {
+  if (ext === '.txt') {
+    return readFileSync(filePath, 'utf-8');
+  }
+  if (ext === '.pdf') {
+    const data = new Uint8Array(readFileSync(filePath));
+    const parser = new PDFParse({ data });
+    await parser.load();
+    const result = await parser.getText();
+    return result.text || '';
+  }
+  if (ext === '.docx' || ext === '.doc') {
+    const buf = readFileSync(filePath);
+    const result = await mammoth.extractRawText({ buffer: buf });
+    return result.value || '';
+  }
+  return '';
+}
+
+function parseResumeText(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  let name = '';
+  const nameLine = lines.find(l => /^name\s*[:\-]/i.test(l));
+  if (nameLine) {
+    name = nameLine.replace(/^name\s*[:\-]\s*/i, '').trim();
+  } else if (lines.length) {
+    name = lines[0];
+  }
+
+  const phoneMatch = text.match(/(?:\+91[\s-]?|0)?[6-9]\d{9}/);
+  const phone = phoneMatch ? phoneMatch[0].replace(/[\s-]/g, '') : '';
+
+  const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w{2,}/);
+  const email = emailMatch ? emailMatch[0] : '';
+
+  const qualifications = [];
+  const keywords = ['B.Ed', 'D.El.Ed', 'CTET', 'NET', 'M.Ed', 'B.A.', 'M.A.', 'B.Sc', 'M.Sc', 'B.Com', 'M.Com', 'Ph.D', 'STET', 'B.Tech', 'M.Tech', 'MBA', 'BCA', 'MCA', 'B.E.', 'M.E.'];
+  for (const kw of keywords) {
+    if (text.toLowerCase().includes(kw.toLowerCase())) qualifications.push(kw);
+  }
+
+  let experience = '';
+  const expMatch = text.match(/(\d+)\s*(?:\+\s*)?(?:years?|yrs?)(?:\s*(?:of\s*)?(?:experience|exp))?/i);
+  if (expMatch) experience = expMatch[1] + ' years';
+
+  let currentCity = '';
+  const cityMatch = text.match(/(?:city|location|address|residing)\s*[:\-]\s*(.+)/i);
+  if (cityMatch) currentCity = cityMatch[1].trim().split(/[,\n]/)[0].trim();
+
+  return { name, phone, email, qualifications, experience, current_city: currentCity };
+}
+
 router.post('/parse-resume', authorize('super_admin', 'admin', 'hr'), resumeUpload.single('resume'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
 
   const ext = extname(req.file.originalname).toLowerCase();
+  const supported = ['.txt', '.pdf', '.docx', '.doc'];
+
+  if (!supported.includes(ext)) {
+    return res.json({ success: true, data: { name: '', phone: '', email: '', qualifications: [], raw_text: '', message: `Unsupported file type ${ext}. Supported: PDF, DOCX, TXT.` } });
+  }
+
   let text = '';
   let message = '';
-
-  if (ext === '.txt') {
-    try { text = readFileSync(req.file.path, 'utf-8'); } catch { text = ''; }
-  } else {
-    message = `File type ${ext} uploaded (${req.file.originalname}). Full parsing requires manual review — only .txt files are auto-parsed.`;
+  try {
+    text = await extractText(req.file.path, ext);
+    if (!text.trim()) message = 'File was parsed but no text content could be extracted.';
+  } catch (err) {
+    message = `Could not parse ${ext} file: ${err.message}`;
   }
 
-  // Extract fields from text
-  let name = '';
-  let phone = '';
-  let email = '';
-  const qualifications = [];
-
-  if (text) {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-    // Name: first non-empty line, or line containing "Name:"
-    const nameLine = lines.find(l => /^name\s*[:\-]/i.test(l));
-    if (nameLine) {
-      name = nameLine.replace(/^name\s*[:\-]\s*/i, '').trim();
-    } else if (lines.length) {
-      name = lines[0];
-    }
-
-    // Phone
-    const phoneMatch = text.match(/(?:\+91[\s-]?|0)?[6-9]\d{9}/);
-    if (phoneMatch) phone = phoneMatch[0].replace(/[\s-]/g, '');
-
-    // Email
-    const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w{2,}/);
-    if (emailMatch) email = emailMatch[0];
-
-    // Qualifications keywords
-    const keywords = ['B.Ed', 'D.El.Ed', 'CTET', 'NET', 'M.Ed', 'B.A.', 'M.A.', 'B.Sc', 'M.Sc', 'B.Com', 'M.Com', 'Ph.D', 'STET'];
-    for (const kw of keywords) {
-      if (text.toLowerCase().includes(kw.toLowerCase())) {
-        qualifications.push(kw);
-      }
-    }
-  }
-
-  res.json({ success: true, data: { name, phone, email, qualifications, raw_text: text, message: message || undefined } });
+  const parsed = text ? parseResumeText(text) : { name: '', phone: '', email: '', qualifications: [], experience: '', current_city: '' };
+  res.json({ success: true, data: { ...parsed, raw_text: text, message: message || undefined } });
 });
 
 router.get('/', async (req, res) => {
@@ -419,8 +448,10 @@ router.get('/:id', async (req, res) => {
   c.can_reveal_aadhar = ['super_admin', 'admin'].includes(req.user.role);
   c.qualifications = await db.prepare('SELECT * FROM candidate_qualifications WHERE candidate_id = ?').all(c.id);
   c.experience = await db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(c.id);
-  c.applications = await db.prepare(`SELECT a.*, v.title as vacancy_title, v.subject, d.name as department_name
+  c.applications = await db.prepare(`SELECT a.*, v.title as vacancy_title, v.subject, d.name as department_name,
+    o.id as offer_id, o.response as offer_response, o.salary_offered, o.designation_offered
     FROM applications a JOIN vacancies v ON a.vacancy_id = v.id LEFT JOIN departments d ON v.department_id = d.id
+    LEFT JOIN offers o ON o.application_id = a.id
     WHERE a.candidate_id = ? ORDER BY a.applied_date DESC`).all(c.id);
   c.documents = await db.prepare('SELECT * FROM documents WHERE candidate_id = ?').all(c.id);
   res.json({ success: true, data: c });

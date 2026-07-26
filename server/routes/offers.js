@@ -1,11 +1,11 @@
 import { Router } from 'express';
+import PDFDocument from 'pdfkit';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticate);
 
-// Default joining/onboarding checklist, seeded on first view of an accepted offer.
 const DEFAULT_ONBOARDING = [
   'Collect original documents & certificates', 'Sign & return appointment letter', 'Submit joining report',
   'Collect bank details for salary', 'Add to payroll', 'Issue ID card', 'Create official email / LMS access',
@@ -41,8 +41,6 @@ router.get('/pending', async (req, res) => {
   res.json({ success: true, data: rows });
 });
 
-// --- Onboarding handoff ---
-// List offers that have been accepted or joined, with onboarding progress.
 router.get('/onboarding', async (_req, res) => {
   const rows = await db.prepare(`SELECT o.id, o.application_id, o.designation_offered, o.salary_offered, o.joining_date_proposed,
     o.response, o.actually_joined, o.actual_joining_date, o.onboarding,
@@ -80,6 +78,131 @@ router.put('/:id/onboarding', authorize('super_admin', 'admin', 'hr'), async (re
   res.json({ success: true, data: stamped });
 });
 
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function fmtSalary(v) {
+  return v ? `Rs. ${Number(v).toLocaleString('en-IN')}` : 'As discussed';
+}
+
+function generateOfferPDF(offer, res) {
+  const doc = new PDFDocument({ size: 'A4', margins: { top: 72, bottom: 72, left: 72, right: 72 } });
+
+  const filename = `offer-letter-${offer.full_name.replace(/\s+/g, '-')}.pdf`;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  doc.pipe(res);
+
+  const blue = '#1e40af';
+  const gray = '#555555';
+  const black = '#1a1a1a';
+  const pw = 451; // page width minus margins
+
+  // Header
+  doc.fontSize(20).fillColor(blue).text('A M World School', { align: 'center' });
+  doc.fontSize(10).fillColor(gray).text('Excellence in Education', { align: 'center' });
+  doc.moveDown(0.5);
+  const y = doc.y;
+  doc.moveTo(72, y).lineTo(72 + pw, y).lineWidth(1).strokeColor(blue).stroke();
+  doc.moveTo(72, y + 3).lineTo(72 + pw, y + 3).stroke();
+  doc.y = y + 16;
+
+  // Ref line
+  const ref = `Ref: AMWS/HR/${new Date().getFullYear()}/${String(offer.id).padStart(4, '0')}`;
+  const date = `Date: ${fmtDate(offer.offer_date)}`;
+  doc.fontSize(10).fillColor(gray);
+  doc.text(ref, 72, doc.y, { continued: false });
+  doc.text(date, 72, doc.y - 14, { align: 'right' });
+  doc.moveDown(1);
+
+  // Addressee
+  doc.fontSize(11).fillColor(black).text('To,');
+  doc.font('Helvetica-Bold').text(offer.full_name);
+  if (offer.current_city) doc.font('Helvetica').text(offer.current_city);
+  doc.font('Helvetica');
+  doc.moveDown(1);
+
+  // Title
+  doc.fontSize(14).fillColor(blue).font('Helvetica-Bold').text('OFFER OF APPOINTMENT', { align: 'center', underline: true });
+  doc.moveDown(0.8);
+
+  // Body
+  doc.fontSize(11).fillColor(black).font('Helvetica');
+  doc.text(`Dear ${offer.full_name},`);
+  doc.moveDown(0.5);
+  doc.text('We are pleased to offer you the position at A M World School. Based on your qualifications, experience, and performance during the selection process, we are confident that you will be a valuable addition to our team.', { lineGap: 3 });
+  doc.moveDown(0.8);
+
+  // Details table
+  const position = offer.designation_offered || offer.designation_title || offer.vacancy_title;
+  const details = [
+    ['Position', position],
+    ['Department', offer.department_name || '-'],
+  ];
+  if (offer.subject) details.push(['Subject', offer.subject]);
+  details.push(
+    ['Monthly CTC', fmtSalary(offer.salary_offered)],
+    ['Proposed Joining Date', offer.joining_date_proposed ? fmtDate(offer.joining_date_proposed) : 'To be confirmed'],
+    ['Probation Period', '6 months from the date of joining'],
+  );
+
+  const tableTop = doc.y;
+  const col1W = 160;
+  const col2W = pw - col1W;
+  details.forEach(([label, value], i) => {
+    const rowY = tableTop + i * 26;
+    // light bg for alternating rows
+    if (i % 2 === 0) {
+      doc.rect(72, rowY, pw, 26).fill('#f8f9fa');
+    }
+    doc.fillColor('#444444').font('Helvetica-Bold').fontSize(10).text(label, 82, rowY + 7, { width: col1W - 10 });
+    doc.fillColor(black).font('Helvetica').text(value, 72 + col1W, rowY + 7, { width: col2W - 10 });
+  });
+  doc.y = tableTop + details.length * 26 + 16;
+
+  // Terms
+  doc.font('Helvetica-Bold').fontSize(11).fillColor(black).text('Terms & Conditions:');
+  doc.moveDown(0.3);
+  doc.font('Helvetica').fontSize(10);
+  const terms = [
+    'This offer is subject to verification of your original documents and certificates.',
+    'The probation period will be of 6 months, during which your performance will be reviewed.',
+    'You are expected to maintain the highest standards of professional conduct and ethics.',
+    'During the probation period, either party may terminate the employment with one month\'s notice.',
+    'After confirmation, a notice period of two months shall apply.',
+  ];
+  terms.forEach((t, i) => {
+    doc.text(`${i + 1}. ${t}`, { indent: 10, lineGap: 2 });
+    doc.moveDown(0.2);
+  });
+
+  doc.moveDown(0.5);
+  const deadline = offer.joining_date_proposed
+    ? fmtDate(new Date(new Date(offer.joining_date_proposed).getTime() - 7 * 24 * 60 * 60 * 1000))
+    : '7 days from receipt';
+  doc.fontSize(11).text(`Kindly confirm your acceptance of this offer by signing and returning a copy of this letter by `, { continued: true });
+  doc.font('Helvetica-Bold').text(`${deadline}.`, { continued: false });
+  doc.font('Helvetica');
+  doc.moveDown(0.5);
+  doc.text('We look forward to welcoming you to the A M World School family.');
+  doc.moveDown(0.8);
+  doc.text('Warm regards,');
+
+  // Signatures
+  const sigY = Math.max(doc.y + 50, 680);
+  doc.moveTo(72, sigY).lineTo(230, sigY).lineWidth(0.5).strokeColor('#333333').stroke();
+  doc.moveTo(330, sigY).lineTo(523, sigY).stroke();
+  doc.fontSize(9).fillColor(gray);
+  doc.text('Principal / Authorized Signatory', 72, sigY + 6, { width: 158, align: 'center' });
+  doc.text('A M World School', 72, sigY + 18, { width: 158, align: 'center' });
+  doc.text('Candidate\'s Signature', 330, sigY + 6, { width: 193, align: 'center' });
+  doc.text(offer.full_name, 330, sigY + 18, { width: 193, align: 'center' });
+
+  doc.end();
+}
+
 router.get('/:id/letter', async (req, res) => {
   const offer = await db.prepare(`SELECT o.*, c.full_name, c.father_or_husband_name, c.phone, c.email, c.current_city,
     v.title as vacancy_title, v.subject, d.name as department_name, des.title as designation_title
@@ -92,72 +215,7 @@ router.get('/:id/letter', async (req, res) => {
     WHERE o.id = ?`).get(req.params.id);
 
   if (!offer) return res.status(404).json({ success: false, error: 'Offer not found' });
-
-  const salaryFormatted = offer.salary_offered ? `₹${Number(offer.salary_offered).toLocaleString('en-IN')}` : 'As discussed';
-
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Offer Letter - ${offer.full_name}</title>
-<style>
-  @page{margin:2.5cm}body{font-family:'Georgia',serif;color:#1a1a1a;line-height:1.8;max-width:700px;margin:40px auto;padding:40px}
-  .header{text-align:center;border-bottom:3px double #1e40af;padding-bottom:20px;margin-bottom:30px}
-  .header h1{color:#1e40af;font-size:22px;margin:0}
-  .header p{color:#666;font-size:12px;margin:4px 0 0}
-  .ref{display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:24px}
-  h2{font-size:16px;text-align:center;margin:24px 0 16px;text-decoration:underline}
-  .details{margin:20px 0}
-  .details table{width:100%;border-collapse:collapse}
-  .details td{padding:6px 12px;font-size:14px;border-bottom:1px solid #eee}
-  .details td:first-child{font-weight:bold;width:40%;color:#444}
-  .sign{margin-top:60px;display:flex;justify-content:space-between}
-  .sign div{text-align:center;width:40%}
-  .sign .line{border-top:1px solid #333;margin-top:40px;padding-top:8px;font-size:13px}
-  @media print{body{margin:0;padding:20px}}
-</style></head><body>
-<div class="header">
-  <h1>A M World School</h1>
-  <p>Excellence in Education</p>
-</div>
-<div class="ref">
-  <span>Ref: AMWS/HR/${new Date().getFullYear()}/${String(offer.id).padStart(4, '0')}</span>
-  <span>Date: ${new Date(offer.offer_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
-</div>
-<p>To,<br><strong>${offer.full_name}</strong>${offer.current_city ? `<br>${offer.current_city}` : ''}</p>
-<h2>OFFER OF APPOINTMENT</h2>
-<p>Dear <strong>${offer.full_name}</strong>,</p>
-<p>We are pleased to offer you the position at A M World School. Based on your qualifications, experience, and performance during the selection process, we are confident that you will be a valuable addition to our team.</p>
-<div class="details">
-<table>
-  <tr><td>Position</td><td>${offer.designation_offered || offer.designation_title || offer.vacancy_title}</td></tr>
-  <tr><td>Department</td><td>${offer.department_name || '-'}</td></tr>
-  ${offer.subject ? `<tr><td>Subject</td><td>${offer.subject}</td></tr>` : ''}
-  <tr><td>Monthly CTC</td><td>${salaryFormatted}</td></tr>
-  <tr><td>Proposed Joining Date</td><td>${offer.joining_date_proposed ? new Date(offer.joining_date_proposed).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'To be confirmed'}</td></tr>
-  <tr><td>Probation Period</td><td>6 months from the date of joining</td></tr>
-</table>
-</div>
-<p><strong>Terms &amp; Conditions:</strong></p>
-<ol style="font-size:14px">
-  <li>This offer is subject to verification of your original documents and certificates.</li>
-  <li>The probation period will be of 6 months, during which your performance will be reviewed.</li>
-  <li>You are expected to maintain the highest standards of professional conduct and ethics.</li>
-  <li>During the probation period, either party may terminate the employment with one month's notice.</li>
-  <li>After confirmation, a notice period of two months shall apply.</li>
-</ol>
-<p>Kindly confirm your acceptance of this offer by signing and returning a copy of this letter by <strong>${offer.joining_date_proposed ? new Date(new Date(offer.joining_date_proposed).getTime() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '7 days from receipt'}</strong>.</p>
-<p>We look forward to welcoming you to the A M World School family.</p>
-<p style="margin-top:24px">Warm regards,</p>
-<div class="sign">
-  <div>
-    <div class="line">Principal / Authorized Signatory<br>A M World School</div>
-  </div>
-  <div>
-    <div class="line">Candidate's Signature<br>${offer.full_name}</div>
-  </div>
-</div>
-</body></html>`;
-
-  res.setHeader('Content-Type', 'text/html');
-  res.setHeader('Content-Disposition', `attachment; filename="offer-letter-${offer.full_name.replace(/\s+/g, '-')}.html"`);
-  res.send(html);
+  generateOfferPDF(offer, res);
 });
 
 export default router;

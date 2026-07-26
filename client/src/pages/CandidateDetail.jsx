@@ -254,10 +254,9 @@ export default function CandidateDetail() {
     } catch { toast.error('Failed to remove from blacklist'); }
   };
 
-  // --- Offer letter download ---
-  const handleDownloadOffer = (applicationId) => {
+  const handleDownloadOffer = (offerId) => {
     const token = localStorage.getItem('token');
-    window.open(`/api/offers/${applicationId}/letter?token=${encodeURIComponent(token)}`, '_blank');
+    window.open(`/api/offers/${offerId}/letter?token=${encodeURIComponent(token)}`, '_blank');
   };
 
   if (!candidate) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
@@ -439,8 +438,8 @@ export default function CandidateDetail() {
                   {a.current_stage === 'selected' && (
                     <button onClick={() => setOfferModal(a.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700"><Gift size={13} /> Make Offer</button>
                   )}
-                  {OFFER_STAGES.includes(a.current_stage) && (
-                    <button onClick={() => handleDownloadOffer(a.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"><Download size={13} /> Download Offer Letter</button>
+                  {OFFER_STAGES.includes(a.current_stage) && a.offer_id && (
+                    <button onClick={() => handleDownloadOffer(a.offer_id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"><Download size={13} /> Offer Letter PDF</button>
                   )}
                 </div>
               </div>

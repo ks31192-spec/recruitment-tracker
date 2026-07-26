@@ -464,6 +464,10 @@ export default function VacancyDetail() {
           <h1 className="text-2xl font-bold text-gray-900">{vacancy.title}</h1>
           <p className="text-sm text-gray-500">{vacancy.department_name} {vacancy.subject ? `- ${vacancy.subject}` : ''} {vacancy.designation_title ? `| ${vacancy.designation_title}` : ''}</p>
         </div>
+        <button onClick={() => { const token = localStorage.getItem('token'); window.open(`/api/export/vacancy-report/${id}?token=${encodeURIComponent(token)}`, '_blank'); }}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50" title="Download report PDF">
+          <Users size={16} /> Report PDF
+        </button>
         <Link to={`/vacancies/${id}/edit`} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><Edit size={16} /> Edit</Link>
         <button onClick={clone} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><Copy size={16} /> Clone</button>
       </div>
