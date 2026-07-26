@@ -17,6 +17,30 @@ export default function PWAPrompt() {
     },
   });
 
+  // If the prompt reappears right after we applied an update, the new service
+  // worker never took control. Unregister it and hard reload so the user isn't
+  // stuck seeing "Update available" over and over.
+  useEffect(() => {
+    if (!needRefresh) return;
+    const startedAt = Number(sessionStorage.getItem('pwa-update-started') || 0);
+    if (!startedAt || Date.now() - startedAt > 30000) return;
+    sessionStorage.removeItem('pwa-update-started');
+    setNeedRefresh(false);
+    navigator.serviceWorker?.getRegistrations()
+      .then(regs => Promise.all(regs.map(r => r.unregister())))
+      .catch(() => {})
+      .then(() => window.location.reload());
+  }, [needRefresh]);
+
+  const applyUpdate = () => {
+    sessionStorage.setItem('pwa-update-started', String(Date.now()));
+    setNeedRefresh(false);
+    // updateServiceWorker(true) reloads the page itself once the new worker
+    // takes control — reloading here too races it, so the page comes back
+    // under the old worker and the prompt fires again.
+    updateServiceWorker(true);
+  };
+
   useEffect(() => {
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     setIsIOS(ios);
@@ -72,7 +96,7 @@ export default function PWAPrompt() {
             </button>
           </div>
           <div className="flex gap-2 mt-2">
-            <button onClick={() => { updateServiceWorker(true).then(() => window.location.reload()).catch(() => window.location.reload()); }}
+            <button onClick={applyUpdate}
               className="flex-1 px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
               Reload
             </button>
