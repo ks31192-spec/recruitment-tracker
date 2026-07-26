@@ -212,6 +212,7 @@ CREATE TABLE IF NOT EXISTS offers (
   left_during_probation INTEGER NOT NULL DEFAULT 0,
   probation_leave_date TEXT,
   probation_leave_reason TEXT,
+  onboarding TEXT,
   notes TEXT
 );
 

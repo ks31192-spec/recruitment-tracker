@@ -1,9 +1,26 @@
 import { Router } from 'express';
 import db from '../db/connection.js';
 import { authenticate } from '../middleware/auth.js';
+import { createNotification } from './notifications.js';
 
 const router = Router();
 router.use(authenticate);
+
+// Notify the vacancy owner (if not the actor) that an applicant moved stage.
+async function notifyStageChange(applicationId, toStage, actor) {
+  try {
+    const info = await db.prepare(`SELECT c.full_name, c.id as candidate_id, v.title as vacancy_title, v.created_by
+      FROM applications a JOIN candidates c ON a.candidate_id = c.id JOIN vacancies v ON a.vacancy_id = v.id
+      WHERE a.id = ?`).get(applicationId);
+    if (!info || !info.created_by || info.created_by === actor.id) return;
+    await createNotification(
+      info.created_by,
+      `${info.full_name} → ${toStage.replace(/_/g, ' ')}`,
+      `${actor.name} moved ${info.full_name} to "${toStage.replace(/_/g, ' ')}" for ${info.vacancy_title}`,
+      `/candidates/${info.candidate_id}`
+    );
+  } catch { /* notifications are best-effort */ }
+}
 
 router.post('/', async (req, res) => {
   const { candidate_id, vacancy_id, salary_expected, earliest_join_date } = req.body;
@@ -37,6 +54,7 @@ router.put('/:id/stage', async (req, res) => {
     .run(stage, stage, reason || null, stage, reason || null, stage, req.body.waitlist_expiry_date || null, req.params.id);
   await db.prepare(`INSERT INTO application_stage_history (application_id, from_stage, to_stage, changed_by, reason) VALUES (?, ?, ?, ?, ?)`)
     .run(req.params.id, app.current_stage, stage, req.user.id, reason || null);
+  await notifyStageChange(req.params.id, stage, req.user);
   res.json({ success: true, data: { id: +req.params.id, stage } });
 });
 
@@ -51,6 +69,7 @@ router.post('/bulk-stage', async (req, res) => {
     await db.prepare(`UPDATE applications SET current_stage = ?, updated_at = datetime('now') WHERE id = ?`).run(stage, appId);
     await db.prepare(`INSERT INTO application_stage_history (application_id, from_stage, to_stage, changed_by, reason) VALUES (?, ?, ?, ?, ?)`)
       .run(appId, app.current_stage, stage, req.user.id, reason || null);
+    await notifyStageChange(appId, stage, req.user);
     updated++;
   }
   res.json({ success: true, data: { updated } });

@@ -8,6 +8,19 @@ const STAGES = ['applied', 'shortlisted', 'interview_scheduled', 'interview_done
 const TERMINAL = ['rejected', 'waitlisted', 'declined', 'no_response'];
 const ALL_STAGES = [...STAGES, ...TERMINAL];
 
+const fitStyles = {
+  within: 'bg-green-100 text-green-700',
+  over: 'bg-red-100 text-red-700',
+  under: 'bg-blue-100 text-blue-700',
+};
+
+function salaryFit(expected, min, max) {
+  if (!expected || (!min && !max)) return null;
+  if (max && expected > max) return { label: `${Math.round((expected / max - 1) * 100)}% over`, level: 'over' };
+  if (min && expected < min) return { label: 'below range', level: 'under' };
+  return { label: 'within budget', level: 'within' };
+}
+
 const stageColors = {
   applied: 'bg-gray-100 text-gray-700',
   shortlisted: 'bg-blue-100 text-blue-700',
@@ -24,7 +37,8 @@ const stageColors = {
   no_response: 'bg-gray-200 text-gray-600',
 };
 
-function ApplicationCard({ app, selected, onToggle, onStageChange, setStageModal }) {
+function ApplicationCard({ app, selected, onToggle, onStageChange, setStageModal, vacancy }) {
+  const fit = salaryFit(app.expected_salary, vacancy?.salary_range_min, vacancy?.salary_range_max);
   return (
     <div className={`bg-white rounded-lg border ${app.is_blacklisted ? 'border-red-300' : 'border-gray-200'} p-3 text-sm`}>
       <div className="flex items-start gap-2">
@@ -40,7 +54,10 @@ function ApplicationCard({ app, selected, onToggle, onStageChange, setStageModal
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{app.phone}</p>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <p className="text-xs text-gray-500">{app.phone}</p>
+            {fit && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${fitStyles[fit.level]}`}>{fit.label}</span>}
+          </div>
           <div className="mt-2">
             <select value="" onChange={e => {
               const val = e.target.value;
@@ -309,6 +326,7 @@ function CompareSection({ vacancyId }) {
     ['Subjects', r => r.subjects.length ? r.subjects.join(', ') : '—'],
     ['Current Salary', r => money(r.current_salary)],
     ['Expected Salary', r => money(r.expected_salary)],
+    ['Salary Fit', r => r.salary_fit ? <span className={`text-xs px-2 py-0.5 rounded-full ${fitStyles[r.salary_fit.level]}`}>{r.salary_fit.label}</span> : '—'],
     ['Interview Score', r => r.avg_eval_score != null ? <span className="font-medium">{r.avg_eval_score}/10 <span className="text-xs text-gray-400">({r.eval_count})</span></span> : '—'],
     ['Docs Verified', r => r.verification_total ? `${r.verified_count}/${r.verification_total}` : '—'],
   ];
@@ -482,6 +500,7 @@ export default function VacancyDetail() {
                         onToggle={toggleSelect}
                         onStageChange={changeStage}
                         setStageModal={setStageModal}
+                        vacancy={vacancy}
                       />
                     ))}
                   </div>

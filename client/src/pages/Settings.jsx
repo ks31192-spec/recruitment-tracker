@@ -352,8 +352,8 @@ function DataTab() {
       const text = await file.text();
       const lines = text.split('\n').filter(l => l.trim());
       if (lines.length < 2) { toast.error('File is empty or has no data rows'); return; }
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, '').replace(/father.*name/, 'father_or_husband_name').replace(/whatsapp/, 'whatsapp_number').replace(/referrer.*/, 'referrer_name'));
-      const keyMap = { full_name: 'full_name', 'full name': 'full_name', name: 'full_name', father_or_husband_name: 'father_or_husband_name', gender: 'gender', dob: 'date_of_birth', date_of_birth: 'date_of_birth', phone: 'phone', whatsapp_number: 'whatsapp_number', email: 'email', city: 'current_city', current_city: 'current_city', state: 'current_state', current_state: 'current_state', source: 'source', referrer_name: 'referrer_name', notes: 'notes' };
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, '').replace(/father.*name/, 'father_or_husband_name').replace(/whatsapp/, 'whatsapp_number').replace(/referrer.*/, 'referrer_name').replace(/aadhar.*/, 'aadhar_number').replace(/oasisid/, 'oasis_id').replace(/currentsalary/, 'current_salary').replace(/expectedsalary/, 'expected_salary'));
+      const keyMap = { full_name: 'full_name', 'full name': 'full_name', name: 'full_name', father_or_husband_name: 'father_or_husband_name', gender: 'gender', dob: 'date_of_birth', date_of_birth: 'date_of_birth', phone: 'phone', whatsapp_number: 'whatsapp_number', email: 'email', city: 'current_city', current_city: 'current_city', state: 'current_state', current_state: 'current_state', aadhar_number: 'aadhar_number', oasis_id: 'oasis_id', current_salary: 'current_salary', expected_salary: 'expected_salary', source: 'source', referrer_name: 'referrer_name', notes: 'notes' };
       const rows = [];
       for (let i = 1; i < lines.length; i++) {
         const vals = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));

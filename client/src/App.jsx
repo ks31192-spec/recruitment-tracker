@@ -24,6 +24,7 @@ import AuditLog from './pages/AuditLog.jsx';
 import Referrals from './pages/Referrals.jsx';
 import CandidatePortal from './pages/CandidatePortal.jsx';
 import Duplicates from './pages/Duplicates.jsx';
+import Onboarding from './pages/Onboarding.jsx';
 import Settings from './pages/Settings.jsx';
 
 function ProtectedRoute({ children }) {
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="interviews/calendar" element={<InterviewCalendar />} />
           <Route path="follow-ups" element={<FollowUps />} />
           <Route path="referrals" element={<Referrals />} />
+          <Route path="onboarding" element={<Onboarding />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="kanban" element={<KanbanBoard />} />
           <Route path="reports" element={<Reports />} />

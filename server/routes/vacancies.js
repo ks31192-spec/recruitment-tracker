@@ -55,7 +55,7 @@ router.post('/:id/clone', authorize('super_admin', 'admin', 'hr'), async (req, r
 });
 
 router.get('/:id/applications', async (req, res) => {
-  const apps = await db.prepare(`SELECT a.*, c.full_name, c.phone, c.photo_path, c.source,
+  const apps = await db.prepare(`SELECT a.*, c.full_name, c.phone, c.photo_path, c.source, c.expected_salary, c.current_salary, c.is_fresher,
     (SELECT GROUP_CONCAT(t.name) FROM candidate_tags ct JOIN tags t ON ct.tag_id = t.id WHERE ct.candidate_id = c.id) as tags,
     (SELECT 1 FROM blacklist bl WHERE bl.candidate_id = c.id) as is_blacklisted
     FROM applications a JOIN candidates c ON a.candidate_id = c.id
@@ -197,8 +197,17 @@ router.get('/:id/cost-summary', async (req, res) => {
   res.json({ success: true, data: { total, breakdown, joined_count: joined, cost_per_hire: costPerHire } });
 });
 
+// Classify a candidate's expected salary against the vacancy's budget band.
+function salaryFit(expected, min, max) {
+  if (!expected || (!min && !max)) return null;
+  if (max && expected > max) return { label: `${Math.round((expected / max - 1) * 100)}% over budget`, level: 'over' };
+  if (min && expected < min) return { label: 'below range', level: 'under' };
+  return { label: 'within budget', level: 'within' };
+}
+
 // Side-by-side comparison of all applicants for a vacancy.
 router.get('/:id/compare', async (req, res) => {
+  const vac = await db.prepare('SELECT salary_range_min, salary_range_max FROM vacancies WHERE id = ?').get(req.params.id);
   const apps = await db.prepare(`SELECT a.id as application_id, a.candidate_id, a.current_stage, a.applied_date,
     c.full_name, c.phone, c.current_city, c.current_salary, c.expected_salary, c.is_fresher, c.verifications,
     (SELECT 1 FROM blacklist bl WHERE bl.candidate_id = c.id) as is_blacklisted
@@ -242,6 +251,7 @@ router.get('/:id/compare', async (req, res) => {
       is_fresher: !!app.is_fresher,
       current_salary: app.current_salary,
       expected_salary: app.expected_salary,
+      salary_fit: salaryFit(app.expected_salary, vac?.salary_range_min, vac?.salary_range_max),
       total_experience_years: Math.round(totalYears * 10) / 10,
       subjects: [...subjects],
       qualifications: quals,

@@ -74,7 +74,7 @@ router.get('/database-backup', authorize('super_admin'), async (req, res) => {
 });
 
 router.get('/template', (req, res) => {
-  const csv = 'Full Name,Father/Husband Name,Gender(male/female/other),DOB(YYYY-MM-DD),Phone,WhatsApp,Email,City,State,Source(walk_in/naukri/whatsapp/referral/website/direct_call/other),Referrer Name,Notes\n';
+  const csv = 'Full Name,Father/Husband Name,Gender(male/female/other),DOB(YYYY-MM-DD),Phone,WhatsApp,Email,City,State,Aadhar(12-digit),Oasis ID,Current Salary,Expected Salary,Source(walk_in/naukri/whatsapp/referral/website/direct_call/other),Referrer Name,Notes\n';
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="candidate-import-template.csv"');
   res.send(csv);
@@ -89,9 +89,10 @@ router.post('/candidates-import', authorize('super_admin', 'admin', 'hr'), async
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row.full_name) { errors.push(`Row ${i + 1}: missing full name`); continue; }
+    const aadhar = row.aadhar_number ? String(row.aadhar_number).replace(/\s/g, '') : null;
     try {
-      await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, source, referrer_name, notes, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(row.full_name, row.father_or_husband_name || null, row.gender || null, row.date_of_birth || null, row.phone || null, row.whatsapp_number || null, row.email || null, row.current_city || null, row.current_state || null, row.source || null, row.referrer_name || null, row.notes || null, req.user.id);
+      await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, aadhar_number, oasis_id, current_salary, expected_salary, source, referrer_name, notes, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(row.full_name, row.father_or_husband_name || null, row.gender || null, row.date_of_birth || null, row.phone || null, row.whatsapp_number || null, row.email || null, row.current_city || null, row.current_state || null, aadhar, row.oasis_id || null, row.current_salary || null, row.expected_salary || null, row.source || null, row.referrer_name || null, row.notes || null, req.user.id);
       imported++;
     } catch (e) { errors.push(`Row ${i + 1}: ${e.message}`); }
   }
