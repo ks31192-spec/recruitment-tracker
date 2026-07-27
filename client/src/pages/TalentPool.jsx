@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../lib/api.js';
 import {
   Users, Loader2, MessageSquareText, Phone, Mail, MapPin, FileText,
-  CalendarDays, Presentation, CalendarCheck, Search,
+  CalendarDays, Presentation, CalendarCheck, Search, Download,
 } from 'lucide-react';
 
 const BUCKETS = [
@@ -97,6 +97,7 @@ export default function TalentPool() {
   const [data, setData] = useState(null);
   const [resultLabel, setResultLabel] = useState('All roles');
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     api.get('/talent-pool/options')
@@ -128,6 +129,28 @@ export default function TalentPool() {
   // Subject only applies to teaching roles (PRT/TGT/PGT). With no designation
   // chosen we still offer it, since the pool could span teaching roles.
   const showSubject = !selected || !!selected.is_teaching;
+
+  // Fetch as an authenticated blob rather than window.open with the token in
+  // the query string, so the credential stays out of the URL and history.
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = {};
+      if (designationId) params.designation_id = designationId;
+      if (showSubject && subject) params.subject = subject;
+      const r = await api.get('/talent-pool/export', { params, responseType: 'blob' });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `talent-pool-${(resultLabel || 'all-roles').replace(/[^a-zA-Z0-9-]+/g, '-')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const pickDesignation = (id) => {
     setDesignationId(id);
@@ -179,9 +202,16 @@ export default function TalentPool() {
 
       {data && (
         <>
-          <div className="flex items-baseline gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <h2 className="text-lg font-semibold text-gray-900">{resultLabel}</h2>
             <span className="text-sm text-gray-500">{data.total} candidate{data.total === 1 ? '' : 's'}</span>
+            {data.total > 0 && (
+              <button onClick={exportCsv} disabled={exporting}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60">
+                {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                Export CSV
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">

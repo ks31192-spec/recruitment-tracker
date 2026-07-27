@@ -49,9 +49,8 @@ router.get('/options', async (_req, res) => {
   });
 });
 
-router.get('/', async (req, res) => {
-  const { designation_id, subject } = req.query;
-
+// Shared by the JSON view and the CSV export so both always agree.
+async function fetchPool({ designation_id, subject }) {
   const where = [];
   const params = [];
   let teaching = true;
@@ -120,14 +119,83 @@ router.get('/', async (req, res) => {
     buckets[bucketOf(r)].push({ ...r, remarks: remarksByApp[r.application_id] || [] });
   }
 
-  res.json({
-    success: true,
-    data: {
-      total: rows.length,
-      counts: Object.fromEntries(BUCKETS.map(b => [b.key, buckets[b.key].length])),
-      buckets,
-    },
-  });
+  return {
+    total: rows.length,
+    counts: Object.fromEntries(BUCKETS.map(b => [b.key, buckets[b.key].length])),
+    buckets,
+  };
+}
+
+router.get('/', async (req, res) => {
+  res.json({ success: true, data: await fetchPool(req.query) });
+});
+
+function esc(val) {
+  if (val == null) return '';
+  const s = String(val);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return isNaN(dt) ? String(d) : dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// Collapses every remark of one type into a single cell, each tagged with its
+// date and author so nothing is lost by flattening to one row per candidate.
+function joinRemarks(remarks, type) {
+  return remarks
+    .filter(r => r.interview_type === type)
+    .map(r => {
+      const who = r.remarks_by_name ? ` — ${r.remarks_by_name}` : '';
+      return `[${fmtDate(r.scheduled_date)}${who}] ${r.remarks}`;
+    })
+    .join('\n');
+}
+
+const CSV_COLUMNS = [
+  'Status', 'Candidate', 'Applied On', 'Stage', 'Designation', 'Subject',
+  'Applied For', 'Phone', 'Email', 'City', 'Expected Salary',
+  'Interview Remarks', 'Demo Remarks', 'Rejection Reason',
+];
+
+router.get('/export', async (req, res) => {
+  const { designation_id, subject } = req.query;
+  const pool = await fetchPool(req.query);
+
+  const lines = [CSV_COLUMNS.join(',')];
+  for (const bucket of BUCKETS) {
+    for (const r of pool.buckets[bucket.key]) {
+      lines.push([
+        esc(bucket.label),
+        esc(r.full_name),
+        esc(fmtDate(r.applied_date)),
+        esc((r.current_stage || '').replace(/_/g, ' ')),
+        esc(r.designation),
+        esc(r.subject),
+        esc(r.vacancy_title),
+        esc(r.phone),
+        esc(r.email),
+        esc(r.current_city),
+        esc(r.expected_salary),
+        esc(joinRemarks(r.remarks, 'interview')),
+        esc(joinRemarks(r.remarks, 'demo')),
+        esc(r.rejection_reason),
+      ].join(','));
+    }
+  }
+
+  const d = designation_id
+    ? await db.prepare('SELECT title FROM designations WHERE id = ?').get(Number(designation_id))
+    : null;
+  const slug = [d?.title, subject].filter(Boolean).join('-').replace(/[^a-zA-Z0-9-]+/g, '-') || 'all-roles';
+
+  // BOM so Excel opens the UTF-8 correctly instead of mangling accents.
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="talent-pool-${slug}.csv"`);
+  res.send('﻿' + lines.join('\r\n'));
 });
 
 export default router;
