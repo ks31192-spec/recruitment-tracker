@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import SCHEMA_SQL from './schema-string.js';
 import { getDb as getFirestore } from './firebase.js';
+import { isTeachingDesignation } from '../lib/designations.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const localFile = process.env.VERCEL ? null : join(__dirname, 'recruitment.db');
@@ -209,10 +210,41 @@ export function ensureReady() {
       for (const [key, value] of defaultSettings) {
         execute('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)', [key, value]);
       }
+
+      // Subject belongs to teaching posts only, so clear any left on
+      // office/admin roles by older builds of the vacancy form. Safe to repeat:
+      // once clean it matches nothing and reports 0.
+      let cleanedSubjects = 0;
+      try {
+        const res = sqlDb.exec('SELECT id, title FROM designations');
+        const nonTeaching = (res.length ? res[0].values : [])
+          .filter(([, title]) => !isTeachingDesignation(title))
+          .map(([id]) => id);
+        if (nonTeaching.length) {
+          const ids = nonTeaching.join(',');
+          const stale = `designation_id IN (${ids}) AND subject IS NOT NULL AND TRIM(subject) <> ''`;
+          const count = sqlDb.exec(`SELECT COUNT(*) FROM vacancies WHERE ${stale}`);
+          cleanedSubjects = count.length ? count[0].values[0][0] : 0;
+          if (cleanedSubjects) {
+            sqlDb.run(`UPDATE vacancies SET subject = NULL WHERE ${stale}`);
+            console.log(`Cleared stray subject on ${cleanedSubjects} non-teaching vacancy row(s)`);
+          }
+        }
+      } catch (e) {
+        console.error('Subject cleanup failed:', e.message);
+      }
+
       save();
 
       if (loadedFromFirestore) {
-        dirty = false;
+        // Only push back up if the cleanup actually rewrote something,
+        // otherwise it would re-run against stale data on every cold start.
+        if (cleanedSubjects) {
+          dirty = true;
+          await flushToFirestore();
+        } else {
+          dirty = false;
+        }
       } else {
         await flushToFirestore();
       }

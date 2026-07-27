@@ -4,11 +4,14 @@
 //
 // Matching is on the leading word so titles like "TGT (Maths)" or "PGT-II"
 // still register as teaching.
-export const TEACHING_DESIGNATIONS = ['PRT', 'TGT', 'PGT'];
+export const TEACHING_DESIGNATIONS = ['PRT', 'TGT', 'PGT', 'HOD'];
 
 export function isTeachingDesignation(title) {
   if (!title) return false;
-  const first = String(title).trim().toUpperCase().split(/[^A-Z]+/)[0];
+  const t = String(title).trim().toUpperCase();
+  // "Head of Department" is the spelled-out form of HOD and is subject-bound.
+  if (/^HEADS?\s+OF\s+DEPARTMENT/.test(t)) return true;
+  const first = t.split(/[^A-Z]+/)[0];
   return TEACHING_DESIGNATIONS.includes(first);
 }
 
