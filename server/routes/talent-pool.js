@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db/connection.js';
 import { authenticate } from '../middleware/auth.js';
+import { withTeachingFlag, isTeachingDesignation } from '../lib/designations.js';
 
 const router = Router();
 router.use(authenticate);
@@ -30,14 +31,21 @@ function bucketOf(r) {
 // Designations and the subjects actually present on vacancies, for the pickers.
 router.get('/options', async (_req, res) => {
   const designations = await db.prepare('SELECT id, title FROM designations ORDER BY title').all();
-  const subjects = await db.prepare(
-    `SELECT DISTINCT subject FROM vacancies
-      WHERE subject IS NOT NULL AND TRIM(subject) <> ''
-      ORDER BY subject`
+  // Only subjects attached to teaching vacancies — a subject recorded against
+  // an office role is bad data and shouldn't be offered as a filter.
+  const subjectRows = await db.prepare(
+    `SELECT DISTINCT v.subject AS subject, d.title AS designation
+       FROM vacancies v
+       LEFT JOIN designations d ON d.id = v.designation_id
+      WHERE v.subject IS NOT NULL AND TRIM(v.subject) <> ''
+      ORDER BY v.subject`
   ).all();
+  const subjects = [...new Set(
+    subjectRows.filter(r => isTeachingDesignation(r.designation)).map(r => r.subject)
+  )];
   res.json({
     success: true,
-    data: { designations, subjects: subjects.map(s => s.subject) },
+    data: { designations: withTeachingFlag(designations), subjects },
   });
 });
 
@@ -46,11 +54,16 @@ router.get('/', async (req, res) => {
 
   const where = [];
   const params = [];
+  let teaching = true;
   if (designation_id) {
     where.push('v.designation_id = ?');
     params.push(Number(designation_id));
+    const d = await db.prepare('SELECT title FROM designations WHERE id = ?').get(Number(designation_id));
+    teaching = isTeachingDesignation(d?.title);
   }
-  if (subject && subject.trim()) {
+  // Subject only means something for teaching roles; ignore it otherwise so an
+  // "Accountant + Computer" request can't be constructed.
+  if (teaching && subject && subject.trim()) {
     where.push('LOWER(TRIM(v.subject)) = LOWER(TRIM(?))');
     params.push(subject);
   }

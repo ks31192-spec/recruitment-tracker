@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validatePassword } from '../lib/password.js';
+import { withTeachingFlag } from '../lib/designations.js';
 
 const router = Router();
 router.use(authenticate);
@@ -39,7 +40,7 @@ router.delete('/departments/:id', authorize('super_admin', 'admin'), async (req,
 // --- Designations ---
 router.get('/designations', async (req, res) => {
   const rows = await db.prepare('SELECT * FROM designations ORDER BY title').all();
-  res.json({ success: true, data: rows });
+  res.json({ success: true, data: withTeachingFlag(rows) });
 });
 
 router.post('/designations', authorize('super_admin', 'admin'), async (req, res) => {

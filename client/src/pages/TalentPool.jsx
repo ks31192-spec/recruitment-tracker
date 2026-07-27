@@ -95,6 +95,7 @@ export default function TalentPool() {
   const [designationId, setDesignationId] = useState('');
   const [subject, setSubject] = useState('');
   const [data, setData] = useState(null);
+  const [resultLabel, setResultLabel] = useState('All roles');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -108,8 +109,14 @@ export default function TalentPool() {
     const params = {};
     if (designationId) params.designation_id = designationId;
     if (subject) params.subject = subject;
+    // Remember what this run was for, so the heading describes the results on
+    // screen rather than whatever the dropdowns have been changed to since.
+    const ranFor = [
+      options.designations.find(d => String(d.id) === String(designationId))?.title,
+      subject,
+    ].filter(Boolean).join(' ') || 'All roles';
     api.get('/talent-pool', { params })
-      .then(r => setData(r.data.data))
+      .then(r => { setData(r.data.data); setResultLabel(ranFor); })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   };
@@ -117,8 +124,16 @@ export default function TalentPool() {
   // Show the full pool on first load so the page is never blank.
   useEffect(() => { search(); }, []);
 
-  const designationName = options.designations.find(d => String(d.id) === String(designationId))?.title;
-  const roleLabel = [designationName, subject].filter(Boolean).join(' ') || 'All roles';
+  const selected = options.designations.find(d => String(d.id) === String(designationId));
+  // Subject only applies to teaching roles (PRT/TGT/PGT). With no designation
+  // chosen we still offer it, since the pool could span teaching roles.
+  const showSubject = !selected || !!selected.is_teaching;
+
+  const pickDesignation = (id) => {
+    setDesignationId(id);
+    const d = options.designations.find(x => String(x.id) === String(id));
+    if (d && !d.is_teaching) setSubject('');
+  };
 
   return (
     <div>
@@ -130,23 +145,25 @@ export default function TalentPool() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3">
+        <div className={`grid gap-3 ${showSubject ? 'md:grid-cols-[1fr_1fr_auto]' : 'md:grid-cols-[1fr_auto]'}`}>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Designation</label>
-            <select value={designationId} onChange={e => setDesignationId(e.target.value)}
+            <select value={designationId} onChange={e => pickDesignation(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
               <option value="">All designations</option>
               {options.designations.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
-            <select value={subject} onChange={e => setSubject(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-              <option value="">All subjects</option>
-              {options.subjects.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+          {showSubject && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+              <select value={subject} onChange={e => setSubject(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">All subjects</option>
+                {options.subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex items-end">
             <button onClick={search} disabled={loading}
               className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
@@ -163,7 +180,7 @@ export default function TalentPool() {
       {data && (
         <>
           <div className="flex items-baseline gap-2 mb-3 flex-wrap">
-            <h2 className="text-lg font-semibold text-gray-900">{roleLabel}</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{resultLabel}</h2>
             <span className="text-sm text-gray-500">{data.total} candidate{data.total === 1 ? '' : 's'}</span>
           </div>
 

@@ -33,6 +33,15 @@ export default function VacancyForm() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Subject belongs to teaching posts only (PRT/TGT/PGT) — an office role has
+  // no subject, so the field is hidden and any stale value cleared.
+  const isTeaching = !!designations.find(d => String(d.id) === String(form.designation_id))?.is_teaching;
+
+  const setDesignation = (v) => {
+    const teaching = !!designations.find(d => String(d.id) === String(v))?.is_teaching;
+    setForm(f => ({ ...f, designation_id: v, subject: teaching ? f.subject : '' }));
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
@@ -55,15 +64,17 @@ export default function VacancyForm() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-            <select value={form.designation_id || ''} onChange={e => set('designation_id', e.target.value || null)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <select value={form.designation_id || ''} onChange={e => setDesignation(e.target.value || null)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
               <option value="">Select...</option>
               {designations.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-            <input value={form.subject || ''} onChange={e => set('subject', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-          </div>
+          {isTeaching && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <input value={form.subject || ''} onChange={e => set('subject', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
             <select value={form.academic_year_id || ''} onChange={e => set('academic_year_id', e.target.value || null)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
