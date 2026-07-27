@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
-import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette, Send, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette, Send, CheckCircle2, XCircle, Building2, GraduationCap, CalendarRange, UsersRound, Database } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import PasswordInput from '../components/PasswordInput.jsx';
 import { validatePassword, PASSWORD_RULE } from '../lib/password.js';
@@ -748,40 +748,104 @@ function DataTab() {
   );
 }
 
+// A colour per tab: the banner adopts it, the content card gets a matching
+// accent strip, and the tab's icon carries it whether active or not.
+// Class strings are written out in full so Tailwind doesn't purge them.
+const TAB_META = {
+  'branding': {
+    label: 'Branding', icon: Palette, desc: 'Name, logo and colours shown across the platform',
+    banner: 'from-violet-600 via-purple-600 to-fuchsia-600',
+    bar: 'bg-gradient-to-r from-violet-500 to-purple-500', text: 'text-violet-600',
+  },
+  'departments': {
+    label: 'Departments', icon: Building2, desc: 'The departments vacancies can belong to',
+    banner: 'from-blue-600 via-indigo-600 to-violet-600',
+    bar: 'bg-gradient-to-r from-blue-500 to-indigo-500', text: 'text-blue-600',
+  },
+  'designations': {
+    label: 'Designations', icon: GraduationCap, desc: 'Post titles such as PRT, TGT and PGT',
+    banner: 'from-emerald-600 via-teal-600 to-cyan-600',
+    bar: 'bg-gradient-to-r from-emerald-500 to-teal-500', text: 'text-emerald-600',
+  },
+  'academic-years': {
+    label: 'Academic Years', icon: CalendarRange, desc: 'Sessions vacancies are recruited against',
+    banner: 'from-amber-500 via-orange-500 to-red-500',
+    bar: 'bg-gradient-to-r from-amber-500 to-orange-500', text: 'text-amber-600',
+  },
+  'email-templates': {
+    label: 'Email Templates', icon: Mail, desc: 'Reusable messages for candidate communication',
+    banner: 'from-cyan-600 via-sky-600 to-blue-600',
+    bar: 'bg-gradient-to-r from-cyan-500 to-sky-500', text: 'text-cyan-600',
+  },
+  'email': {
+    label: 'Email', icon: Send, desc: 'Delivery provider and automatic emails',
+    banner: 'from-teal-600 via-emerald-600 to-green-600',
+    bar: 'bg-gradient-to-r from-teal-500 to-emerald-500', text: 'text-teal-600',
+  },
+  'users': {
+    label: 'Users', icon: UsersRound, desc: 'Who can sign in, and what they can do',
+    banner: 'from-rose-600 via-pink-600 to-fuchsia-600',
+    bar: 'bg-gradient-to-r from-rose-500 to-pink-500', text: 'text-rose-600',
+  },
+  'data': {
+    label: 'Data', icon: Database, desc: 'Import, export and backups',
+    banner: 'from-slate-700 via-slate-600 to-gray-600',
+    bar: 'bg-gradient-to-r from-slate-500 to-gray-500', text: 'text-slate-600',
+  },
+};
+
 export default function Settings() {
   const { user } = useAuth();
   const [tab, setTab] = useState('branding');
+  const meta = TAB_META[tab];
   const tabs = ['branding', 'departments', 'designations', 'academic-years'];
   if (user?.role === 'super_admin' || user?.role === 'admin') tabs.push('email-templates');
   if (user?.role === 'super_admin') tabs.push('email', 'users', 'data');
 
   return (
     <div className="space-y-5">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gray-700 to-gray-600 p-6 mb-1 text-white">
+      {/* Banner takes the active tab's colour, so the header says where you are */}
+      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${meta.banner} p-6 mb-1 text-white transition-colors duration-300`}>
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-        <div className="relative">
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-white/70 text-sm mt-1">Configure your recruitment platform</p>
+        <div className="relative flex items-center gap-3">
+          <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/20 shrink-0">
+            <meta.icon size={22} />
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold">Settings</h1>
+            <p className="text-white/70 text-sm mt-0.5">{meta.desc}</p>
+          </div>
         </div>
       </div>
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto">
-        {tabs.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium rounded-md capitalize whitespace-nowrap transition-colors ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
-            {t.replace(/-/g, ' ')}
-          </button>
-        ))}
+        {tabs.map(t => {
+          const m = TAB_META[t];
+          const active = tab === t;
+          return (
+            <button key={t} onClick={() => setTab(t)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
+                active ? `bg-white shadow-sm ${m.text}` : 'text-gray-600 hover:text-gray-900'
+              }`}>
+              {/* Icons keep their colour whether or not the tab is active */}
+              <m.icon size={15} className={m.text} />
+              {m.label}
+            </button>
+          );
+        })}
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        {tab === 'branding' && <BrandingTab />}
-        {tab === 'departments' && <EditableList endpoint="/settings/departments" nameKey="name" label="Department" />}
-        {tab === 'designations' && <EditableList endpoint="/settings/designations" nameKey="title" label="Designation" />}
-        {tab === 'academic-years' && <EditableList endpoint="/settings/academic-years" nameKey="label" label="Academic Year" />}
-        {tab === 'email-templates' && <EmailTemplatesTab />}
-        {tab === 'email' && <EmailSettingsTab />}
-        {tab === 'users' && <UsersTab />}
-        {tab === 'data' && <DataTab />}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className={`h-1 ${meta.bar}`} />
+        <div className="p-6">
+          {tab === 'branding' && <BrandingTab />}
+          {tab === 'departments' && <EditableList endpoint="/settings/departments" nameKey="name" label="Department" />}
+          {tab === 'designations' && <EditableList endpoint="/settings/designations" nameKey="title" label="Designation" />}
+          {tab === 'academic-years' && <EditableList endpoint="/settings/academic-years" nameKey="label" label="Academic Year" />}
+          {tab === 'email-templates' && <EmailTemplatesTab />}
+          {tab === 'email' && <EmailSettingsTab />}
+          {tab === 'users' && <UsersTab />}
+          {tab === 'data' && <DataTab />}
+        </div>
       </div>
     </div>
   );
