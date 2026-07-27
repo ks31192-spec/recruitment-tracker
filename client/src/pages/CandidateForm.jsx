@@ -1,59 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api.js';
-import { ArrowLeft, Save, AlertTriangle, Plus, Trash2, GraduationCap, Briefcase, UserRound, Wallet, StickyNote } from 'lucide-react';
+import { Save, AlertTriangle, Plus, Trash2, GraduationCap, Briefcase, UserRound, Wallet, StickyNote } from 'lucide-react';
 import ResumeParser from '../components/ResumeParser.jsx';
-
-// One colour per section so the form reads as distinct blocks rather than a
-// wall of identical white cards. Class strings are written out in full so
-// Tailwind doesn't purge them.
-const TONES = {
-  blue: {
-    bar: 'bg-gradient-to-r from-blue-500 to-indigo-500', chip: 'bg-blue-50 text-blue-600',
-    border: 'border-blue-100', card: 'bg-blue-50/40 border-blue-100',
-    btn: 'text-blue-600 border-blue-200 hover:bg-blue-50',
-  },
-  emerald: {
-    bar: 'bg-gradient-to-r from-emerald-500 to-teal-500', chip: 'bg-emerald-50 text-emerald-600',
-    border: 'border-emerald-100', card: 'bg-emerald-50/40 border-emerald-100',
-    btn: 'text-emerald-600 border-emerald-200 hover:bg-emerald-50',
-  },
-  violet: {
-    bar: 'bg-gradient-to-r from-violet-500 to-purple-500', chip: 'bg-violet-50 text-violet-600',
-    border: 'border-violet-100', card: 'bg-violet-50/40 border-violet-100',
-    btn: 'text-violet-600 border-violet-200 hover:bg-violet-50',
-  },
-  amber: {
-    bar: 'bg-gradient-to-r from-amber-500 to-orange-500', chip: 'bg-amber-50 text-amber-600',
-    border: 'border-amber-100', card: 'bg-amber-50/40 border-amber-100',
-    btn: 'text-amber-600 border-amber-200 hover:bg-amber-50',
-  },
-  rose: {
-    bar: 'bg-gradient-to-r from-rose-500 to-pink-500', chip: 'bg-rose-50 text-rose-600',
-    border: 'border-rose-100', card: 'bg-rose-50/40 border-rose-100',
-    btn: 'text-rose-600 border-rose-200 hover:bg-rose-50',
-  },
-};
-
-function Section({ icon: Icon, title, tone, action, children }) {
-  return (
-    <div className={`bg-white rounded-xl border ${tone.border} shadow-sm overflow-hidden`}>
-      <div className={`h-1 ${tone.bar}`} />
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5">
-            <span className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${tone.chip}`}>
-              <Icon size={18} />
-            </span>
-            {title}
-          </h2>
-          {action}
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
+import { Section, TONES, FormBanner } from '../components/FormSection.jsx';
 
 const sources = [
   { value: 'walk_in', label: 'Walk-in' }, { value: 'naukri', label: 'Naukri' },
@@ -156,17 +106,12 @@ export default function CandidateForm() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded-2xl p-5 text-white flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-lg bg-white/15 hover:bg-white/25 transition-colors">
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold">{id ? 'Edit Candidate' : 'Add Candidate'}</h1>
-          <p className="text-white/70 text-sm mt-0.5">
-            {id ? 'Update this candidate’s details' : 'Add a new candidate to your talent pool'}
-          </p>
-        </div>
-      </div>
+      <FormBanner
+        gradient="from-blue-600 via-indigo-600 to-violet-600"
+        title={id ? 'Edit Candidate' : 'Add Candidate'}
+        subtitle={id ? 'Update this candidate’s details' : 'Add a new candidate to your talent pool'}
+        onBack={() => navigate(-1)}
+      />
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-center gap-2">

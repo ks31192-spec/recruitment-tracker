@@ -286,14 +286,14 @@ export default function CandidateDetail() {
         </div>
       )}
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={() => navigate('/candidates')} className="p-2 hover:bg-gray-100 rounded-lg"><ArrowLeft size={20} /></button>
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-5 text-white flex items-center gap-3 flex-wrap">
+        <button onClick={() => navigate('/candidates')} className="p-2 rounded-lg bg-white/15 hover:bg-white/25 transition-colors"><ArrowLeft size={20} /></button>
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="relative group">
             {candidate.photo_path ? (
-              <img src={`/${candidate.photo_path}`} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-gray-200" />
+              <img src={`/${candidate.photo_path}`} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-white/40" />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600">
+              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold text-white">
                 {candidate.full_name?.charAt(0)}
               </div>
             )}
@@ -303,8 +303,8 @@ export default function CandidateDetail() {
             </label>
           </div>
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-gray-900 truncate">{candidate.full_name}</h1>
-            <div className="flex items-center gap-3 text-sm text-gray-500 mt-0.5 flex-wrap">
+            <h1 className="text-2xl font-bold truncate">{candidate.full_name}</h1>
+            <div className="flex items-center gap-3 text-sm text-white/75 mt-0.5 flex-wrap">
               {candidate.phone && <span className="flex items-center gap-1"><Phone size={14} />{candidate.phone}</span>}
               {candidate.email && <span className="flex items-center gap-1"><Mail size={14} />{candidate.email}</span>}
               {candidate.current_city && <span className="flex items-center gap-1"><MapPin size={14} />{candidate.current_city}</span>}
@@ -312,14 +312,14 @@ export default function CandidateDetail() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setCommModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><MessageCircle size={16} /> Log Call</button>
-          <button onClick={openApply} className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><Briefcase size={16} /> Apply</button>
+          <button onClick={() => setCommModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white/15 hover:bg-white/25 transition-colors"><MessageCircle size={16} /> Log Call</button>
+          <button onClick={openApply} className="flex items-center gap-1.5 px-3 py-2 bg-white text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-50 transition-colors"><Briefcase size={16} /> Apply</button>
           {blacklist ? (
-            <button onClick={handleRemoveBlacklist} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-red-300 text-red-700 rounded-lg hover:bg-red-50"><ShieldBan size={16} /> Unblacklist</button>
+            <button onClick={handleRemoveBlacklist} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-red-500/90 hover:bg-red-500 transition-colors"><ShieldBan size={16} /> Unblacklist</button>
           ) : (
-            <button onClick={() => setShowBlacklistModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-red-600"><ShieldBan size={16} /> Blacklist</button>
+            <button onClick={() => setShowBlacklistModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white/15 hover:bg-white/25 transition-colors"><ShieldBan size={16} /> Blacklist</button>
           )}
-          <Link to={`/candidates/${id}/edit`} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"><Edit size={16} /> Edit</Link>
+          <Link to={`/candidates/${id}/edit`} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white/15 hover:bg-white/25 transition-colors"><Edit size={16} /> Edit</Link>
         </div>
       </div>
 
