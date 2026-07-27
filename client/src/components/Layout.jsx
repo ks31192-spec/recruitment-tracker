@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useBranding } from '../context/BrandingContext.jsx';
 import SchoolLogo from './SchoolLogo.jsx';
 import NotificationBell from './NotificationBell.jsx';
+import MobileTabBar from './MobileTabBar.jsx';
 
 export const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: 'text-blue-400', bg: 'bg-blue-500/15', active: 'bg-gradient-to-r from-blue-600 to-indigo-500' },
@@ -98,10 +99,13 @@ export default function Layout() {
           <span className="ml-3 font-semibold text-blue-700 flex-1">Recruitment Tracker</span>
           <NotificationBell />
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+        {/* Extra bottom padding so content clears the mobile tab bar */}
+        <main className="flex-1 overflow-auto p-4 md:p-6 pb-24 lg:pb-6">
           <Outlet />
         </main>
       </div>
+
+      <MobileTabBar onMore={() => setSidebarOpen(true)} />
     </div>
   );
 }

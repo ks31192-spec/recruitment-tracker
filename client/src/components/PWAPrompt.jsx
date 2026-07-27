@@ -87,7 +87,7 @@ export default function PWAPrompt() {
   return (
     <>
       {needRefresh && (
-        <div className="fixed bottom-3 right-3 z-50 bg-white rounded-xl shadow-lg border border-gray-200 p-3 w-72 animate-slide-up">
+        <div className="fixed bottom-20 lg:bottom-3 right-3 z-50 bg-white rounded-xl shadow-lg border border-gray-200 p-3 w-72 animate-slide-up">
           <div className="flex items-center gap-2">
             <RefreshCw size={16} className="text-blue-600 shrink-0" />
             <p className="text-sm font-medium text-gray-900 flex-1">Update available</p>
@@ -109,7 +109,7 @@ export default function PWAPrompt() {
       )}
 
       {showInstallBanner && !needRefresh && (
-        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 rounded-2xl shadow-2xl p-4 text-white animate-slide-up">
+        <div className="fixed bottom-24 lg:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 rounded-2xl shadow-2xl p-4 text-white animate-slide-up">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
               <Smartphone size={20} />
@@ -136,7 +136,7 @@ export default function PWAPrompt() {
       )}
 
       {showIOSGuide && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center p-4" onClick={() => setShowIOSGuide(false)}>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center p-4 pb-24 lg:pb-4" onClick={() => setShowIOSGuide(false)}>
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="text-center mb-4">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center mx-auto mb-3">
