@@ -44,7 +44,13 @@ export default function Layout() {
         <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-3">
           <SchoolLogo size={36} rounded="rounded-lg" />
           <div className="min-w-0">
-            <h1 className="text-sm font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-tight truncate">{schoolName}</h1>
+            {/* Wrap rather than truncate — long school names were cut off in
+                the 256px rail. Clamped at two lines so the nav can't be pushed
+                down, with the full name on hover. */}
+            <h1 title={schoolName}
+              className="text-sm font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-tight line-clamp-2 break-words">
+              {schoolName}
+            </h1>
             <p className="text-xs text-slate-400">Recruitment Tracker</p>
           </div>
         </div>
