@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Shield,
   X,
+  Briefcase,
 } from 'lucide-react';
 import axios from 'axios';
 import { useBranding } from '../context/BrandingContext.jsx';
@@ -31,6 +32,16 @@ const STAGES_PIPELINE = [
 ];
 
 const TERMINAL_STAGES = ['declined', 'no_response', 'rejected', 'waitlisted'];
+
+// Cycled across application cards so several applications stay distinguishable.
+const APP_ACCENTS = [
+  'bg-gradient-to-b from-indigo-500 to-blue-500',
+  'bg-gradient-to-b from-emerald-500 to-teal-500',
+  'bg-gradient-to-b from-violet-500 to-purple-500',
+  'bg-gradient-to-b from-amber-500 to-orange-500',
+  'bg-gradient-to-b from-rose-500 to-pink-500',
+  'bg-gradient-to-b from-cyan-500 to-sky-500',
+];
 
 const STAGE_COLORS = {
   applied: 'bg-blue-100 text-blue-700',
@@ -73,7 +84,7 @@ function StageProgress({ currentStage }) {
                     isCurrent
                       ? 'bg-blue-600 border-blue-600 ring-4 ring-blue-100'
                       : isPast
-                        ? 'bg-blue-500 border-blue-500'
+                        ? 'bg-emerald-500 border-emerald-500'
                         : 'bg-white border-gray-300'
                   }`}
                 >
@@ -83,7 +94,7 @@ function StageProgress({ currentStage }) {
                 </div>
                 <span
                   className={`text-[10px] mt-1 text-center leading-tight ${
-                    isCurrent ? 'font-semibold text-blue-700' : isPast ? 'text-blue-500' : 'text-gray-400'
+                    isCurrent ? 'font-semibold text-blue-700' : isPast ? 'text-emerald-600' : 'text-gray-400'
                   }`}
                 >
                   {stageLabel(stage)}
@@ -92,7 +103,7 @@ function StageProgress({ currentStage }) {
               {i < STAGES_PIPELINE.length - 1 && (
                 <div
                   className={`h-0.5 w-4 shrink-0 -mt-4 ${
-                    isPast ? 'bg-blue-400' : 'bg-gray-200'
+                    isPast ? 'bg-emerald-400' : 'bg-gray-200'
                   }`}
                 />
               )}
@@ -291,15 +302,16 @@ export default function CandidatePortal() {
         {step === 3 && data && (
           <div className="space-y-6">
             {/* Candidate Info */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-start justify-between">
+            <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 rounded-xl shadow-sm p-6 text-white">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+              <div className="relative flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="w-7 h-7 text-blue-600" />
+                  <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                    <User className="w-7 h-7" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{data.candidate.full_name}</h2>
-                    <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
+                    <h2 className="text-xl font-bold">{data.candidate.full_name}</h2>
+                    <div className="flex flex-wrap gap-3 mt-1 text-sm text-white/80">
                       {data.candidate.phone && (
                         <span className="flex items-center gap-1">
                           <Phone className="w-3.5 h-3.5" /> {data.candidate.phone}
@@ -321,7 +333,7 @@ export default function CandidatePortal() {
                 </div>
                 <button
                   onClick={() => { setStep(1); setPhone(''); setOtp(''); setData(null); setError(''); setDisplayOtp(''); }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors shrink-0"
                   title="Logout"
                 >
                   <X className="w-5 h-5" />
@@ -331,34 +343,47 @@ export default function CandidatePortal() {
 
             {/* Applications */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Applications</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2.5">
+                <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
+                  <Briefcase className="w-[18px] h-[18px]" />
+                </span>
+                Your Applications
+              </h3>
               {data.applications?.length ? (
                 <div className="space-y-4">
-                  {data.applications.map(app => (
-                    <div key={app.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                      <div className="flex items-start justify-between flex-wrap gap-2">
-                        <div>
-                          <h4 className="font-semibold text-gray-900">{app.vacancy_title}</h4>
-                          <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                            {app.department_name && <span>{app.department_name}</span>}
-                            {app.subject && <span>({app.subject})</span>}
+                  {data.applications.map((app, idx) => {
+                    const accent = APP_ACCENTS[idx % APP_ACCENTS.length];
+                    return (
+                    <div key={app.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex">
+                      <div className={`w-1.5 shrink-0 ${accent}`} />
+                      <div className="p-6 flex-1 min-w-0">
+                        <div className="flex items-start justify-between flex-wrap gap-2">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{app.vacancy_title}</h4>
+                            <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                              {app.department_name && <span>{app.department_name}</span>}
+                              {app.subject && <span>({app.subject})</span>}
+                            </div>
                           </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${STAGE_COLORS[app.current_stage] || 'bg-gray-100 text-gray-600'}`}>
+                            {stageLabel(app.current_stage)}
+                          </span>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${STAGE_COLORS[app.current_stage] || 'bg-gray-100 text-gray-600'}`}>
-                          {stageLabel(app.current_stage)}
-                        </span>
+                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                          <Clock className="w-3 h-3" />
+                          Applied: {new Date(app.applied_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </div>
+                        <StageProgress currentStage={app.current_stage} />
                       </div>
-                      <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
-                        <Clock className="w-3 h-3" />
-                        Applied: {new Date(app.applied_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </div>
-                      <StageProgress currentStage={app.current_stage} />
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-400">
-                  <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center mx-auto mb-3 text-white shadow-sm">
+                    <FileText className="w-7 h-7" />
+                  </div>
                   <p>No applications found</p>
                 </div>
               )}
@@ -366,23 +391,32 @@ export default function CandidatePortal() {
 
             {/* Upload Documents */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Upload Documents</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2.5">
+                <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-cyan-50 text-cyan-600 shrink-0">
+                  <Upload className="w-[18px] h-[18px]" />
+                </span>
+                Upload Documents
+              </h3>
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div
                   onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={onDrop}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                    dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                    dragOver
+                      ? 'border-cyan-500 bg-cyan-100'
+                      : 'border-cyan-200 bg-gradient-to-br from-cyan-50/70 to-blue-50/70 hover:border-cyan-400'
                   }`}
                 >
                   {uploading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
+                    <Loader2 className="w-8 h-8 animate-spin text-cyan-500 mx-auto" />
                   ) : (
                     <>
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-600 text-sm">Drag & drop a file here, or</p>
-                      <label className="mt-2 inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
+                      <span className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-sm mx-auto mb-3">
+                        <Upload className="w-6 h-6" />
+                      </span>
+                      <p className="text-gray-700 text-sm font-medium">Drag &amp; drop a file here, or</p>
+                      <label className="mt-2 inline-block px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-sm font-medium rounded-lg cursor-pointer hover:from-cyan-700 hover:to-blue-700 transition-all">
                         Browse Files
                         <input
                           type="file"
@@ -390,7 +424,7 @@ export default function CandidatePortal() {
                           onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); e.target.value = ''; }}
                         />
                       </label>
-                      <p className="text-xs text-gray-400 mt-2">Max file size: 10 MB</p>
+                      <p className="text-xs text-gray-500 mt-2">Max file size: 10 MB</p>
                     </>
                   )}
                 </div>
@@ -406,10 +440,10 @@ export default function CandidatePortal() {
                     <p className="text-sm font-medium text-gray-700 mb-2">Uploaded Documents</p>
                     <div className="space-y-2">
                       {data.documents.map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText className="w-4 h-4 text-gray-400" />
-                          <span>{doc.file_name}</span>
-                          <span className="text-xs text-gray-400 ml-auto">{doc.doc_type}</span>
+                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-700 bg-cyan-50/60 border border-cyan-100 rounded-lg px-3 py-2">
+                          <FileText className="w-4 h-4 text-cyan-600 shrink-0" />
+                          <span className="truncate">{doc.file_name}</span>
+                          <span className="text-xs text-cyan-700 bg-cyan-100 rounded-full px-2 py-0.5 ml-auto shrink-0">{doc.doc_type}</span>
                         </div>
                       ))}
                     </div>
