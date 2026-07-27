@@ -4,15 +4,17 @@
 //
 // Matching is on the leading word so titles like "TGT (Maths)" or "PGT-II"
 // still register as teaching.
-export const TEACHING_DESIGNATIONS = ['PRT', 'TGT', 'PGT', 'HOD'];
+export const TEACHING_DESIGNATIONS = ['PRT', 'TGT', 'PGT', 'HOD', 'COORDINATOR'];
 
 export function isTeachingDesignation(title) {
   if (!title) return false;
   const t = String(title).trim().toUpperCase();
   // "Head of Department" is the spelled-out form of HOD and is subject-bound.
-  if (/^HEADS?\s+OF\s+DEPARTMENT/.test(t)) return true;
-  const first = t.split(/[^A-Z]+/)[0];
-  return TEACHING_DESIGNATIONS.includes(first);
+  if (/\bHEADS?\s+OF\s+DEPARTMENT\b/.test(t)) return true;
+  // Whole-word anywhere in the title, so qualified variants like
+  // "Academic Coordinator", "Science HOD" or "PGT-II" still register, while
+  // "Headmaster", "Sports Coach" and "Counsellor" stay out.
+  return TEACHING_DESIGNATIONS.some(k => new RegExp(`\\b${k}\\b`).test(t));
 }
 
 // Adds is_teaching to designation rows so clients can decide whether to offer
