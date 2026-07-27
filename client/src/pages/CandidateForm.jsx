@@ -1,8 +1,59 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api.js';
-import { ArrowLeft, Save, AlertTriangle, Plus, Trash2, GraduationCap, Briefcase } from 'lucide-react';
+import { ArrowLeft, Save, AlertTriangle, Plus, Trash2, GraduationCap, Briefcase, UserRound, Wallet, StickyNote } from 'lucide-react';
 import ResumeParser from '../components/ResumeParser.jsx';
+
+// One colour per section so the form reads as distinct blocks rather than a
+// wall of identical white cards. Class strings are written out in full so
+// Tailwind doesn't purge them.
+const TONES = {
+  blue: {
+    bar: 'bg-gradient-to-r from-blue-500 to-indigo-500', chip: 'bg-blue-50 text-blue-600',
+    border: 'border-blue-100', card: 'bg-blue-50/40 border-blue-100',
+    btn: 'text-blue-600 border-blue-200 hover:bg-blue-50',
+  },
+  emerald: {
+    bar: 'bg-gradient-to-r from-emerald-500 to-teal-500', chip: 'bg-emerald-50 text-emerald-600',
+    border: 'border-emerald-100', card: 'bg-emerald-50/40 border-emerald-100',
+    btn: 'text-emerald-600 border-emerald-200 hover:bg-emerald-50',
+  },
+  violet: {
+    bar: 'bg-gradient-to-r from-violet-500 to-purple-500', chip: 'bg-violet-50 text-violet-600',
+    border: 'border-violet-100', card: 'bg-violet-50/40 border-violet-100',
+    btn: 'text-violet-600 border-violet-200 hover:bg-violet-50',
+  },
+  amber: {
+    bar: 'bg-gradient-to-r from-amber-500 to-orange-500', chip: 'bg-amber-50 text-amber-600',
+    border: 'border-amber-100', card: 'bg-amber-50/40 border-amber-100',
+    btn: 'text-amber-600 border-amber-200 hover:bg-amber-50',
+  },
+  rose: {
+    bar: 'bg-gradient-to-r from-rose-500 to-pink-500', chip: 'bg-rose-50 text-rose-600',
+    border: 'border-rose-100', card: 'bg-rose-50/40 border-rose-100',
+    btn: 'text-rose-600 border-rose-200 hover:bg-rose-50',
+  },
+};
+
+function Section({ icon: Icon, title, tone, action, children }) {
+  return (
+    <div className={`bg-white rounded-xl border ${tone.border} shadow-sm overflow-hidden`}>
+      <div className={`h-1 ${tone.bar}`} />
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5">
+            <span className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${tone.chip}`}>
+              <Icon size={18} />
+            </span>
+            {title}
+          </h2>
+          {action}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 const sources = [
   { value: 'walk_in', label: 'Walk-in' }, { value: 'naukri', label: 'Naukri' },
@@ -105,9 +156,16 @@ export default function CandidateForm() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg"><ArrowLeft size={20} /></button>
-        <h1 className="text-2xl font-bold text-gray-900">{id ? 'Edit Candidate' : 'Add Candidate'}</h1>
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded-2xl p-5 text-white flex items-center gap-3">
+        <button onClick={() => navigate(-1)} className="p-2 rounded-lg bg-white/15 hover:bg-white/25 transition-colors">
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold">{id ? 'Edit Candidate' : 'Add Candidate'}</h1>
+          <p className="text-white/70 text-sm mt-0.5">
+            {id ? 'Update this candidate’s details' : 'Add a new candidate to your talent pool'}
+          </p>
+        </div>
       </div>
 
       {error && (
@@ -141,8 +199,7 @@ export default function CandidateForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Personal Information */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-          <h2 className="text-lg font-semibold text-gray-900">Personal Information</h2>
+        <Section icon={UserRound} title="Personal Information" tone={TONES.blue}>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
@@ -207,17 +264,16 @@ export default function CandidateForm() {
               </div>
             )}
           </div>
-        </div>
+        </Section>
 
         {/* Salary */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Salary Details</h2>
+        <Section icon={Wallet} title="Salary Details" tone={TONES.emerald}
+          action={
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input type="checkbox" checked={form.is_fresher} onChange={e => set('is_fresher', e.target.checked)} className="accent-blue-600 w-4 h-4" />
+              <input type="checkbox" checked={form.is_fresher} onChange={e => set('is_fresher', e.target.checked)} className="accent-emerald-600 w-4 h-4" />
               Fresher (no prior experience)
             </label>
-          </div>
+          }>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -233,20 +289,19 @@ export default function CandidateForm() {
               <input type="number" value={form.expected_salary} onChange={e => set('expected_salary', e.target.value)} placeholder="e.g. 35000" className={inputCls} />
             </div>
           </div>
-        </div>
+        </Section>
 
         {/* Qualifications */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><GraduationCap size={20} className="text-gray-400" /> Qualifications</h2>
+        <Section icon={GraduationCap} title="Qualifications" tone={TONES.violet}
+          action={
             <button type="button" onClick={() => setQualifications(q => [...q, emptyQual()])}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50">
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg transition-colors ${TONES.violet.btn}`}>
               <Plus size={15} /> Add Qualification
             </button>
-          </div>
+          }>
           <div className="space-y-4">
             {qualifications.map((q, i) => (
-              <div key={i} className="border border-gray-100 rounded-lg p-4 bg-gray-50/50 relative">
+              <div key={i} className={`border rounded-lg p-4 relative ${TONES.violet.card}`}>
                 {qualifications.length > 1 && (
                   <button type="button" onClick={() => setQualifications(qs => qs.filter((_, idx) => idx !== i))}
                     className="absolute top-3 right-3 p-1 text-gray-300 hover:text-red-500" title="Remove">
@@ -285,27 +340,26 @@ export default function CandidateForm() {
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer mt-3">
-                  <input type="checkbox" checked={q.is_appearing} onChange={e => setQual(i, 'is_appearing', e.target.checked)} className="accent-blue-600 w-4 h-4" />
+                  <input type="checkbox" checked={q.is_appearing} onChange={e => setQual(i, 'is_appearing', e.target.checked)} className="accent-violet-600 w-4 h-4" />
                   Currently appearing / result awaited
                 </label>
               </div>
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* Experience */}
         {!form.is_fresher && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Briefcase size={20} className="text-gray-400" /> Teaching / Work Experience</h2>
+          <Section icon={Briefcase} title="Teaching / Work Experience" tone={TONES.amber}
+            action={
               <button type="button" onClick={() => setExperience(x => [...x, emptyExp()])}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50">
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg transition-colors ${TONES.amber.btn}`}>
                 <Plus size={15} /> Add Experience
               </button>
-            </div>
+            }>
             <div className="space-y-4">
               {experience.map((exp, i) => (
-                <div key={i} className="border border-gray-100 rounded-lg p-4 bg-gray-50/50 relative">
+                <div key={i} className={`border rounded-lg p-4 relative ${TONES.amber.card}`}>
                   {experience.length > 1 && (
                     <button type="button" onClick={() => setExperience(es => es.filter((_, idx) => idx !== i))}
                       className="absolute top-3 right-3 p-1 text-gray-300 hover:text-red-500" title="Remove">
@@ -343,18 +397,19 @@ export default function CandidateForm() {
                 </div>
               ))}
             </div>
-          </div>
+          </Section>
         )}
 
         {/* Notes */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea rows={3} value={form.notes} onChange={e => set('notes', e.target.value)} className={inputCls} />
-        </div>
+        <Section icon={StickyNote} title="Notes" tone={TONES.rose}>
+          <textarea rows={3} value={form.notes} onChange={e => set('notes', e.target.value)}
+            placeholder="Anything worth remembering about this candidate..." className={inputCls} />
+        </Section>
 
         <div className="flex justify-end gap-3 pb-8">
           <button type="button" onClick={() => navigate(-1)} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-          <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors">
+          <button type="submit" disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 transition-all shadow-sm">
             <Save size={16} /> {saving ? 'Saving...' : 'Save Candidate'}
           </button>
         </div>

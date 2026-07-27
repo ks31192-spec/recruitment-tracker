@@ -61,20 +61,24 @@ export default function ResumeParser({ onParsed }) {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onClick={() => inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-          dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+          dragging
+            ? 'border-blue-500 bg-blue-100'
+            : 'border-blue-200 bg-gradient-to-br from-blue-50/70 to-indigo-50/70 hover:border-blue-400 hover:from-blue-50 hover:to-indigo-50'
         }`}>
         <input ref={inputRef} type="file" accept=".txt,.pdf,.doc,.docx" onChange={onPickFile} className="hidden" />
         {loading ? (
-          <div className="flex flex-col items-center gap-2 text-gray-500">
+          <div className="flex flex-col items-center gap-2 text-blue-700">
             <Loader size={28} className="animate-spin text-blue-500" />
             <p className="text-sm">Parsing resume...</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 text-gray-500">
-            <Upload size={28} />
-            <p className="text-sm font-medium">Drop resume here or click to upload</p>
-            <p className="text-xs text-gray-400">.txt, .pdf, .doc, .docx</p>
+          <div className="flex flex-col items-center gap-2">
+            <span className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-sm">
+              <Upload size={22} />
+            </span>
+            <p className="text-sm font-semibold text-gray-800">Drop resume here or click to upload</p>
+            <p className="text-xs text-gray-500">.txt, .pdf, .doc, .docx</p>
           </div>
         )}
       </div>
