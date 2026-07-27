@@ -29,6 +29,11 @@ export const TONES = {
     border: 'border-rose-100', card: 'bg-rose-50/40 border-rose-100',
     btn: 'text-rose-600 border-rose-200 hover:bg-rose-50',
   },
+  cyan: {
+    bar: 'bg-gradient-to-r from-cyan-500 to-sky-500', chip: 'bg-cyan-50 text-cyan-600',
+    border: 'border-cyan-100', card: 'bg-cyan-50/40 border-cyan-100',
+    btn: 'text-cyan-600 border-cyan-200 hover:bg-cyan-50',
+  },
 };
 
 export function Section({ icon: Icon, title, tone, action, children }) {

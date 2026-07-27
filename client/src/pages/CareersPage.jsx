@@ -5,6 +5,17 @@ import { Briefcase, MapPin, Clock, GraduationCap, IndianRupee, ChevronRight, Use
 import { useBranding } from '../context/BrandingContext.jsx';
 import SchoolLogo from '../components/SchoolLogo.jsx';
 
+// Cycled across the job cards so a long list of openings stays lively rather
+// than reading as identical white rows. Written out in full for Tailwind.
+const CARD_ACCENTS = [
+  { bar: 'bg-gradient-to-b from-blue-500 to-indigo-500', chip: 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white', hover: 'hover:border-blue-300' },
+  { bar: 'bg-gradient-to-b from-emerald-500 to-teal-500', chip: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white', hover: 'hover:border-emerald-300' },
+  { bar: 'bg-gradient-to-b from-violet-500 to-purple-500', chip: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white', hover: 'hover:border-violet-300' },
+  { bar: 'bg-gradient-to-b from-amber-500 to-orange-500', chip: 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white', hover: 'hover:border-amber-300' },
+  { bar: 'bg-gradient-to-b from-rose-500 to-pink-500', chip: 'bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white', hover: 'hover:border-rose-300' },
+  { bar: 'bg-gradient-to-b from-cyan-500 to-sky-500', chip: 'bg-cyan-50 text-cyan-600 group-hover:bg-cyan-600 group-hover:text-white', hover: 'hover:border-cyan-300' },
+];
+
 export default function CareersPage() {
   const [vacancies, setVacancies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,8 +128,8 @@ export default function CareersPage() {
           </div>
         ) : vacancies.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Briefcase className="text-gray-400" size={28} />
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-sm">
+              <Briefcase size={28} />
             </div>
             <h2 className="text-xl font-semibold text-gray-800">No Openings Right Now</h2>
             <p className="text-gray-500 mt-2 max-w-md mx-auto">We don't have any open positions at the moment. Please check back later for new opportunities.</p>
@@ -131,10 +142,14 @@ export default function CareersPage() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {filtered.map(v => (
+                {filtered.map((v, idx) => {
+                  const accent = CARD_ACCENTS[idx % CARD_ACCENTS.length];
+                  return (
                   <Link key={v.id} to={`/careers/${v.id}`}
-                    className="block bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group">
-                    <div className="p-5 sm:p-6">
+                    className={`block bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all group overflow-hidden ${accent.hover}`}>
+                    <div className="flex">
+                    <div className={`w-1.5 shrink-0 ${accent.bar}`} />
+                    <div className="p-5 sm:p-6 flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
@@ -149,28 +164,28 @@ export default function CareersPage() {
                           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-gray-500">
                             {v.department_name && (
                               <span className="flex items-center gap-1.5">
-                                <MapPin size={14} className="text-gray-400" />{v.department_name}
+                                <MapPin size={14} className="text-blue-500" />{v.department_name}
                               </span>
                             )}
                             {v.designation_title && (
                               <span className="flex items-center gap-1.5">
-                                <Briefcase size={14} className="text-gray-400" />{v.designation_title}
+                                <Briefcase size={14} className="text-violet-500" />{v.designation_title}
                               </span>
                             )}
                             {v.subject && (
                               <span className="flex items-center gap-1.5">
-                                <GraduationCap size={14} className="text-gray-400" />{v.subject}
+                                <GraduationCap size={14} className="text-emerald-500" />{v.subject}
                               </span>
                             )}
                             {(v.experience_min > 0 || v.experience_max) && (
                               <span className="flex items-center gap-1.5">
-                                <Clock size={14} className="text-gray-400" />
+                                <Clock size={14} className="text-amber-500" />
                                 {v.experience_min || 0}{v.experience_max ? `-${v.experience_max}` : '+'} years exp.
                               </span>
                             )}
                             {(v.salary_range_min || v.salary_range_max) && (
                               <span className="flex items-center gap-1.5">
-                                <IndianRupee size={14} className="text-gray-400" />
+                                <IndianRupee size={14} className="text-teal-500" />
                                 {v.salary_range_min ? `${(v.salary_range_min / 1000).toFixed(0)}k` : ''}
                                 {v.salary_range_min && v.salary_range_max ? ' - ' : ''}
                                 {v.salary_range_max ? `${(v.salary_range_max / 1000).toFixed(0)}k` : ''}/month
@@ -187,8 +202,8 @@ export default function CareersPage() {
                             <p className="text-sm text-gray-600 mt-2 line-clamp-2">{v.description}</p>
                           )}
                         </div>
-                        <div className="shrink-0 w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                          <ChevronRight size={18} className="text-blue-600 group-hover:text-white transition-colors" />
+                        <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${accent.chip}`}>
+                          <ChevronRight size={18} />
                         </div>
                       </div>
 
@@ -197,8 +212,10 @@ export default function CareersPage() {
                         {v.academic_year && <span>Academic Year: {v.academic_year}</span>}
                       </div>
                     </div>
+                    </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>

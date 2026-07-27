@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Send, CheckCircle, Briefcase, MapPin, GraduationCap, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, Briefcase, MapPin, GraduationCap, Plus, Trash2, UserRound, Wallet, Upload, HelpCircle } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext.jsx';
 import SchoolLogo from '../components/SchoolLogo.jsx';
+import { Section, TONES } from '../components/FormSection.jsx';
 
 const qualLevels = ['10th (Secondary)', '12th (Sr. Secondary)', 'Graduation', 'Post Graduation', 'B.Ed', 'D.El.Ed', 'Diploma', 'Ph.D', 'Other'];
 const emptyQual = () => ({ degree: '', specialization: '', university: '', year_of_passing: '', percentage_or_cgpa: '', is_appearing: false });
@@ -120,21 +121,23 @@ export default function PublicApply() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900">{vacancy.title}</h2>
-          <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-500">
-            {vacancy.department_name && <span className="flex items-center gap-1"><MapPin size={14} />{vacancy.department_name}</span>}
-            {vacancy.designation_title && <span className="flex items-center gap-1"><Briefcase size={14} />{vacancy.designation_title}</span>}
-            {vacancy.qualification_required && <span className="flex items-center gap-1"><GraduationCap size={14} />{vacancy.qualification_required}</span>}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 p-6 mb-6 text-white shadow-sm">
+          <div className="absolute top-0 right-0 w-56 h-56 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+          <div className="relative">
+            <h2 className="text-xl font-bold">{vacancy.title}</h2>
+            <div className="flex flex-wrap gap-3 mt-2 text-sm text-white/80">
+              {vacancy.department_name && <span className="flex items-center gap-1"><MapPin size={14} />{vacancy.department_name}</span>}
+              {vacancy.designation_title && <span className="flex items-center gap-1"><Briefcase size={14} />{vacancy.designation_title}</span>}
+              {vacancy.qualification_required && <span className="flex items-center gap-1"><GraduationCap size={14} />{vacancy.qualification_required}</span>}
+            </div>
+            {vacancy.description && <p className="text-sm text-white/75 mt-3">{vacancy.description}</p>}
           </div>
-          {vacancy.description && <p className="text-sm text-gray-600 mt-3">{vacancy.description}</p>}
         </div>
 
         {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
-          <h3 className="text-lg font-semibold text-gray-900">Your Details</h3>
-
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Section icon={UserRound} title="Your Details" tone={TONES.blue}>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
@@ -184,16 +187,16 @@ export default function PublicApply() {
               <input value={form.oasis_id} onChange={e => set('oasis_id', e.target.value)} placeholder="Optional" className={fieldCls} />
             </div>
           </div>
+          </Section>
 
           {/* Salary */}
-          <div className="pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-gray-900">Salary Expectation</h3>
+          <Section icon={Wallet} title="Salary Expectation" tone={TONES.emerald}
+            action={
               <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" checked={form.is_fresher} onChange={e => set('is_fresher', e.target.checked)} className="accent-blue-600 w-4 h-4" />
+                <input type="checkbox" checked={form.is_fresher} onChange={e => set('is_fresher', e.target.checked)} className="accent-emerald-600 w-4 h-4" />
                 I am a fresher
               </label>
-            </div>
+            }>
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Current Salary (Monthly) {!form.is_fresher && '*'}</label>
@@ -209,19 +212,18 @@ export default function PublicApply() {
                 <input type="date" value={form.earliest_join_date} onChange={e => set('earliest_join_date', e.target.value)} className={fieldCls} />
               </div>
             </div>
-          </div>
+          </Section>
 
           {/* Qualifications */}
-          <div className="pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2"><GraduationCap size={18} className="text-gray-400" /> Qualifications</h3>
-              <button type="button" onClick={() => setQualifications(q => [...q, emptyQual()])} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50">
+          <Section icon={GraduationCap} title="Qualifications" tone={TONES.violet}
+            action={
+              <button type="button" onClick={() => setQualifications(q => [...q, emptyQual()])} className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg transition-colors ${TONES.violet.btn}`}>
                 <Plus size={15} /> Add
               </button>
-            </div>
+            }>
             <div className="space-y-4">
               {qualifications.map((q, i) => (
-                <div key={i} className="border border-gray-100 rounded-lg p-4 bg-gray-50/50 relative">
+                <div key={i} className={`border rounded-lg p-4 relative ${TONES.violet.card}`}>
                   {qualifications.length > 1 && (
                     <button type="button" onClick={() => setQualifications(qs => qs.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-1 text-gray-300 hover:text-red-500"><Trash2 size={15} /></button>
                   )}
@@ -252,26 +254,25 @@ export default function PublicApply() {
                     </div>
                   </div>
                   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer mt-3">
-                    <input type="checkbox" checked={q.is_appearing} onChange={e => setQual(i, 'is_appearing', e.target.checked)} className="accent-blue-600 w-4 h-4" />
+                    <input type="checkbox" checked={q.is_appearing} onChange={e => setQual(i, 'is_appearing', e.target.checked)} className="accent-violet-600 w-4 h-4" />
                     Currently appearing / result awaited
                   </label>
                 </div>
               ))}
             </div>
-          </div>
+          </Section>
 
           {/* Experience */}
           {!form.is_fresher && (
-            <div className="pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2"><Briefcase size={18} className="text-gray-400" /> Teaching / Work Experience</h3>
-                <button type="button" onClick={() => setExperience(x => [...x, emptyExp()])} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50">
+            <Section icon={Briefcase} title="Teaching / Work Experience" tone={TONES.amber}
+              action={
+                <button type="button" onClick={() => setExperience(x => [...x, emptyExp()])} className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg transition-colors ${TONES.amber.btn}`}>
                   <Plus size={15} /> Add
                 </button>
-              </div>
+              }>
               <div className="space-y-4">
                 {experience.map((exp, i) => (
-                  <div key={i} className="border border-gray-100 rounded-lg p-4 bg-gray-50/50 relative">
+                  <div key={i} className={`border rounded-lg p-4 relative ${TONES.amber.card}`}>
                     {experience.length > 1 && (
                       <button type="button" onClick={() => setExperience(es => es.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-1 text-gray-300 hover:text-red-500"><Trash2 size={15} /></button>
                     )}
@@ -306,18 +307,17 @@ export default function PublicApply() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Section>
           )}
 
           {/* Resume */}
-          <div className="pt-4 border-t border-gray-100">
+          <Section icon={Upload} title="Resume" tone={TONES.cyan}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Upload Resume (PDF/DOC)</label>
-            <input type="file" accept=".pdf,.doc,.docx" onChange={e => setResume(e.target.files[0])} className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-          </div>
+            <input type="file" accept=".pdf,.doc,.docx" onChange={e => setResume(e.target.files[0])} className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100" />
+          </Section>
 
           {vacancy.screening_questions?.length > 0 && (
-            <div className="space-y-4 pt-4 border-t border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Screening Questions</h3>
+            <Section icon={HelpCircle} title="Screening Questions" tone={TONES.rose}>
               {vacancy.screening_questions.map(q => (
                 <div key={q.id}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -331,12 +331,12 @@ export default function PublicApply() {
                   />
                 </div>
               ))}
-            </div>
+            </Section>
           )}
 
-          <div className="flex justify-end pt-4 border-t border-gray-100">
+          <div className="flex justify-end pb-8">
             <button type="submit" disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors font-medium">
+              className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 transition-all font-medium shadow-sm">
               <Send size={16} /> {submitting ? 'Submitting...' : 'Submit Application'}
             </button>
           </div>
