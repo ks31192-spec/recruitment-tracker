@@ -2,11 +2,27 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, CalendarCheck, Briefcase, Menu } from 'lucide-react';
 
 // The four highest-traffic areas on a phone, plus More for everything else.
+// Each tab keeps its own colour at all times — active state is signalled by the
+// top bar, the deeper icon tint and the coloured label, not by draining the
+// colour out of the inactive ones. Classes are written out in full so Tailwind
+// doesn't purge them.
 const TABS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-  { to: '/candidates', icon: Users, label: 'Candidates' },
-  { to: '/interviews', icon: CalendarCheck, label: 'Interviews' },
-  { to: '/vacancies', icon: Briefcase, label: 'Vacancies' },
+  {
+    to: '/dashboard', icon: LayoutDashboard, label: 'Home',
+    text: 'text-blue-600', chip: 'bg-blue-50', chipActive: 'bg-blue-100', bar: 'bg-blue-600',
+  },
+  {
+    to: '/candidates', icon: Users, label: 'Candidates',
+    text: 'text-emerald-600', chip: 'bg-emerald-50', chipActive: 'bg-emerald-100', bar: 'bg-emerald-600',
+  },
+  {
+    to: '/interviews', icon: CalendarCheck, label: 'Interviews',
+    text: 'text-indigo-600', chip: 'bg-indigo-50', chipActive: 'bg-indigo-100', bar: 'bg-indigo-600',
+  },
+  {
+    to: '/vacancies', icon: Briefcase, label: 'Vacancies',
+    text: 'text-violet-600', chip: 'bg-violet-50', chipActive: 'bg-violet-100', bar: 'bg-violet-600',
+  },
 ];
 
 export default function MobileTabBar({ onMore }) {
@@ -18,23 +34,26 @@ export default function MobileTabBar({ onMore }) {
       <div className="grid grid-cols-5">
         {TABS.map(tab => (
           <NavLink key={tab.to} to={tab.to}
-            className={({ isActive }) =>
-              `relative flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
-              }`}>
+            className="relative flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 text-[11px] font-medium">
             {({ isActive }) => (
               <>
-                {isActive && <span className="absolute top-0 w-8 h-0.5 rounded-full bg-blue-600" />}
-                <tab.icon size={21} strokeWidth={isActive ? 2.4 : 2} />
-                <span className="leading-none">{tab.label}</span>
+                {isActive && <span className={`absolute top-0 w-8 h-0.5 rounded-full ${tab.bar}`} />}
+                <span className={`flex items-center justify-center w-9 h-7 rounded-lg transition-colors ${isActive ? tab.chipActive : tab.chip}`}>
+                  <tab.icon size={19} className={tab.text} strokeWidth={isActive ? 2.5 : 2} />
+                </span>
+                <span className={`leading-none ${isActive ? `${tab.text} font-semibold` : 'text-gray-500'}`}>
+                  {tab.label}
+                </span>
               </>
             )}
           </NavLink>
         ))}
         <button onClick={onMore} type="button"
-          className="flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium text-gray-500 hover:text-gray-700 transition-colors">
-          <Menu size={21} />
-          <span className="leading-none">More</span>
+          className="flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 text-[11px] font-medium">
+          <span className="flex items-center justify-center w-9 h-7 rounded-lg bg-amber-50">
+            <Menu size={19} className="text-amber-600" />
+          </span>
+          <span className="leading-none text-gray-500">More</span>
         </button>
       </div>
     </nav>
