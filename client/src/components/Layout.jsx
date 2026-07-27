@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { LayoutDashboard, Briefcase, Users, CalendarCheck, Calendar, Bell, BarChart3, Columns3, FileText, Shield, Settings, LogOut, Menu, Search, Globe, UserPlus, Copy, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, CalendarCheck, Calendar, Bell, BarChart3, Columns3, FileText, Shield, Settings, LogOut, Menu, Search, Globe, UserPlus, Copy, UserCheck, Layers } from 'lucide-react';
 import { useState } from 'react';
 import { useBranding } from '../context/BrandingContext.jsx';
 import SchoolLogo from './SchoolLogo.jsx';
@@ -10,6 +10,7 @@ export const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: 'text-blue-400', bg: 'bg-blue-500/15', active: 'bg-gradient-to-r from-blue-600 to-indigo-500' },
   { to: '/vacancies', icon: Briefcase, label: 'Vacancies', color: 'text-violet-400', bg: 'bg-violet-500/15', active: 'bg-gradient-to-r from-violet-600 to-purple-500' },
   { to: '/candidates', icon: Users, label: 'Candidates', color: 'text-emerald-400', bg: 'bg-emerald-500/15', active: 'bg-gradient-to-r from-emerald-600 to-teal-500' },
+  { to: '/talent-pool', icon: Layers, label: 'Talent Pool', color: 'text-rose-400', bg: 'bg-rose-500/15', active: 'bg-gradient-to-r from-rose-600 to-pink-500' },
   { to: '/duplicates', icon: Copy, label: 'Duplicates', color: 'text-amber-400', bg: 'bg-amber-500/15', active: 'bg-gradient-to-r from-amber-500 to-orange-500' },
   { to: '/interviews', icon: CalendarCheck, label: 'Interviews', end: true, color: 'text-indigo-400', bg: 'bg-indigo-500/15', active: 'bg-gradient-to-r from-indigo-600 to-blue-500' },
   { to: '/interviews/calendar', icon: Calendar, label: 'Calendar', color: 'text-purple-400', bg: 'bg-purple-500/15', active: 'bg-gradient-to-r from-purple-600 to-indigo-500' },

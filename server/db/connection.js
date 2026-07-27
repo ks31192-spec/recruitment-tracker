@@ -19,10 +19,13 @@ function execute(sql, args = []) {
   if (/^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|PRAGMA)/i.test(sql)) {
     sqlDb.run(sql, params);
     dirty = true;
-    save();
+    // Read these BEFORE save(): sql.js export() closes and reopens the
+    // connection, and last_insert_rowid()/changes() are per-connection state,
+    // so saving first would always report 0.
     const info = sqlDb.exec("SELECT last_insert_rowid() as id, changes() as c");
     const lastId = info[0]?.values[0]?.[0];
     const changes = info[0]?.values[0]?.[1];
+    save();
     return { rows: [], columns: [], lastInsertRowid: lastId, rowsAffected: changes };
   }
   const stmt = sqlDb.prepare(sql);

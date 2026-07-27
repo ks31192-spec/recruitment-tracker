@@ -29,6 +29,7 @@ import referralRoutes from './routes/referrals.js';
 import portalRoutes from './routes/portal.js';
 import brandingRoutes from './routes/branding.js';
 import emailRoutes from './routes/email.js';
+import talentPoolRoutes from './routes/talent-pool.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -68,6 +69,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/talent-pool', talentPoolRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/export', exportRoutes);
 

@@ -21,6 +21,7 @@ import FollowUps from './pages/FollowUps.jsx';
 import Analytics from './pages/Analytics.jsx';
 import KanbanBoard from './pages/KanbanBoard.jsx';
 import Reports from './pages/Reports.jsx';
+import TalentPool from './pages/TalentPool.jsx';
 import AuditLog from './pages/AuditLog.jsx';
 import Referrals from './pages/Referrals.jsx';
 import CandidatePortal from './pages/CandidatePortal.jsx';
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="vacancies/:id/edit" element={<VacancyForm />} />
           <Route path="vacancies/:id" element={<VacancyDetail />} />
           <Route path="candidates" element={<Candidates />} />
+          <Route path="talent-pool" element={<TalentPool />} />
           <Route path="candidates/new" element={<CandidateForm />} />
           <Route path="candidates/:id/edit" element={<CandidateForm />} />
           <Route path="candidates/:id" element={<CandidateDetail />} />
