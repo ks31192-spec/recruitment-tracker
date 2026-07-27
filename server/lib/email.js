@@ -68,8 +68,19 @@ export async function sendEmail({ to, subject, html, text }) {
       html,
       ...(text ? { text } : {}),
     });
-    console.log('[email] sent to', to, result);
-    return { sent: true, id: result.data?.id };
+    // The SDK reports API rejections in result.error rather than throwing, so
+    // without this check a refused send was reported back as a success.
+    if (result?.error) {
+      const reason = result.error.message || result.error.name || 'Email provider rejected the message';
+      console.error('[email] rejected for', to, '-', reason);
+      return { sent: false, reason };
+    }
+    if (!result?.data?.id) {
+      console.error('[email] no id returned for', to, JSON.stringify(result));
+      return { sent: false, reason: 'Email provider did not confirm the send' };
+    }
+    console.log('[email] sent to', to, result.data.id);
+    return { sent: true, id: result.data.id };
   } catch (err) {
     console.error('[email] failed:', err.message);
     return { sent: false, reason: err.message };
