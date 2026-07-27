@@ -27,7 +27,7 @@ import analyticsRoutes from './routes/analytics.js';
 import notificationRoutes from './routes/notifications.js';
 import referralRoutes from './routes/referrals.js';
 import portalRoutes from './routes/portal.js';
-import brandingRoutes from './routes/branding.js';
+import brandingRoutes, { manifestHandler } from './routes/branding.js';
 import emailRoutes from './routes/email.js';
 import talentPoolRoutes from './routes/talent-pool.js';
 
@@ -52,6 +52,8 @@ app.use('/api', (req, res, next) => { ensureReady().then(() => refreshFromFirest
 
 // Public routes (no auth)
 app.use('/api/branding', brandingRoutes);
+// Served from the DB so the installed app follows the branding settings.
+app.get('/api/manifest.webmanifest', manifestHandler);
 app.use('/api/public', publicRoutes);
 app.use('/api/portal', portalRoutes);
 

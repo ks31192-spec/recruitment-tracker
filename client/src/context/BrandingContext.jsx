@@ -31,6 +31,25 @@ export function BrandingProvider({ children }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Keep the tab title and the iOS home-screen name in step with the branding
+  // — both are otherwise stuck at whatever the app was built with.
+  useEffect(() => {
+    const name = branding.schoolName;
+    // Names like "Sarvagya Solutions - Recruitment" already say it; don't
+    // append and end up with "... Recruitment - Recruitment Tracker".
+    document.title = /recruit/i.test(name) ? name : `${name} - Recruitment Tracker`;
+
+    // iOS reads this at install time for the home-screen label. Take it from
+    // the manifest so it matches the short_name Android uses.
+    fetch('/api/manifest.webmanifest')
+      .then(r => r.json())
+      .then(m => {
+        const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (meta && m.short_name) meta.setAttribute('content', m.short_name);
+      })
+      .catch(() => {});
+  }, [branding.schoolName]);
+
   return <BrandingContext.Provider value={{ ...branding, refresh: load }}>{children}</BrandingContext.Provider>;
 }
 
