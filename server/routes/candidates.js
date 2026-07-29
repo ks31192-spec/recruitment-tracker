@@ -7,6 +7,7 @@ import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { deleteFile } from '../lib/filestore.js';
 import { deleteApplicationsCascade } from '../lib/cascade.js';
+import { logAudit } from './audit.js';
 import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
 
@@ -670,13 +671,23 @@ router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
   if (!c) return res.status(404).json({ success: false, error: 'Not found' });
 
   // Stored files outlive the row now, so clear them out too.
-  const docs = await db.prepare('SELECT file_path FROM documents WHERE candidate_id = ?').all(req.params.id);
+  const docs = await db.prepare('SELECT * FROM documents WHERE candidate_id = ?').all(req.params.id);
   const stored = [...docs.map(d => d.file_path), c.photo_path, c.resume_path];
   for (const p of stored) {
     if (!p) continue;
     const key = String(p).replace(/\\/g, '/').replace(/^\/?uploads\//, '');
     try { await deleteFile(key); } catch (e) { console.error('Failed to remove file', key, e.message); }
   }
+
+  // Snapshot everything first so the audit entry can be used to rebuild the record.
+  const snapshot = {
+    candidate: await db.prepare('SELECT * FROM candidates WHERE id = ?').get(req.params.id),
+    qualifications: await db.prepare('SELECT * FROM candidate_qualifications WHERE candidate_id = ?').all(req.params.id),
+    experience: await db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(req.params.id),
+    notes: await db.prepare('SELECT * FROM candidate_notes WHERE candidate_id = ?').all(req.params.id),
+    documents: docs,
+    applications: await db.prepare('SELECT * FROM applications WHERE candidate_id = ?').all(req.params.id),
+  };
 
   await db.prepare('DELETE FROM candidate_notes WHERE candidate_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM candidate_tags WHERE candidate_id = ?').run(req.params.id);
@@ -691,6 +702,10 @@ router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
   const apps = await db.prepare('SELECT id FROM applications WHERE candidate_id = ?').all(req.params.id);
   await deleteApplicationsCascade(db, apps.map(a => a.id));
   await db.prepare('DELETE FROM candidates WHERE id = ?').run(req.params.id);
+
+  await logAudit(req.user.id, req.user.name, 'delete_candidate', 'candidate', +req.params.id,
+    JSON.stringify(snapshot), req.ip);
+
   res.json({ success: true, data: { message: 'Candidate deleted' } });
 });
 

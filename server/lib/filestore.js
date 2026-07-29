@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, statSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { getDb } from '../db/firebase.js';
@@ -120,6 +120,35 @@ export async function deleteFile(key) {
   parts.forEach(p => batch.delete(p));
   batch.delete(ref);
   await batch.commit();
+}
+
+/**
+ * Keys under a `prefix/` folder, with their metadata, newest first.
+ * Locally this reads the directory; in the cloud it queries by key prefix.
+ */
+export async function listFiles(prefix) {
+  const db = cloud();
+  if (!db) {
+    const dir = join(localRoot, prefix);
+    if (!existsSync(dir)) return [];
+    return readdirSync(dir)
+      .map(name => {
+        const { size, mtime } = statSync(join(dir, name));
+        return { key: `${prefix}/${name}`, name, size, created_at: mtime.toISOString() };
+      })
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+
+  const snap = await db.collection(COLLECTION)
+    .where('key', '>=', `${prefix}/`)
+    .where('key', '<', `${prefix}0`) // '0' is the next character after '/'
+    .get();
+  return snap.docs
+    .map(d => {
+      const { key, name, size, created_at } = d.data();
+      return { key, name, size, created_at };
+    })
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 }
 
 /** Filename that will not collide, keeping the original extension. */

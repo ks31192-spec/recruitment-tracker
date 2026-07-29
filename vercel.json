@@ -12,5 +12,8 @@
     "api/index.js": {
       "includeFiles": "server/**"
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/cron/backup", "schedule": "0 20 * * *" }
+  ]
 }

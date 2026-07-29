@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { logAudit } from './audit.js';
 
 const router = Router();
 router.use(authenticate);
@@ -265,7 +266,9 @@ router.get('/:id/compare', async (req, res) => {
 });
 
 router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
-  const v = await db.prepare('SELECT id FROM vacancies WHERE id = ?').get(req.params.id);
+  // Read the whole row before anything is removed: the audit entry keeps it so a
+  // deletion can be undone by hand.
+  const v = await db.prepare('SELECT * FROM vacancies WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ success: false, error: 'Not found' });
 
   // Applications carry a NOT NULL vacancy_id and cannot be reassigned, so deleting
@@ -280,10 +283,21 @@ router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
     });
   }
 
+  const questions = await db.prepare('SELECT * FROM screening_questions WHERE vacancy_id = ?').all(req.params.id);
+  const checklist = await db.prepare('SELECT * FROM document_checklist WHERE vacancy_id = ?').all(req.params.id);
+  const costs = await db.prepare('SELECT * FROM recruitment_costs WHERE vacancy_id = ?').all(req.params.id);
+
   await db.prepare('DELETE FROM screening_questions WHERE vacancy_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM document_checklist WHERE vacancy_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM recruitment_costs WHERE vacancy_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM vacancies WHERE id = ?').run(req.params.id);
+
+  await logAudit(
+    req.user.id, req.user.name, 'delete_vacancy', 'vacancy', v.id,
+    JSON.stringify({ vacancy: v, screening_questions: questions, document_checklist: checklist, recruitment_costs: costs }),
+    req.ip,
+  );
+
   res.json({ success: true, data: { message: 'Vacancy deleted' } });
 });
 

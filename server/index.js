@@ -29,6 +29,7 @@ import portalRoutes from './routes/portal.js';
 import brandingRoutes, { manifestHandler } from './routes/branding.js';
 import emailRoutes from './routes/email.js';
 import talentPoolRoutes from './routes/talent-pool.js';
+import backupRoutes, { cronBackupHandler } from './routes/backups.js';
 
 const app = express();
 
@@ -63,6 +64,8 @@ app.use('/api/branding', brandingRoutes);
 app.get('/api/manifest.webmanifest', manifestHandler);
 app.use('/api/public', publicRoutes);
 app.use('/api/portal', portalRoutes);
+// Vercel Cron cannot present a user token; this one carries CRON_SECRET instead.
+app.get('/api/cron/backup', cronBackupHandler);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
@@ -79,6 +82,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/talent-pool', talentPoolRoutes);
+app.use('/api/backups', backupRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/export', exportRoutes);
 

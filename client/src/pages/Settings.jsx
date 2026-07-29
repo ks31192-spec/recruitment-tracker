@@ -744,6 +744,80 @@ function DataTab() {
           )}
         </div>
       </div>
+
+      <AutomaticBackups />
+    </div>
+  );
+}
+
+const formatBytes = n => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+// Snapshots taken nightly by Vercel Cron and kept in the same store as uploads,
+// so they survive a cold start. The manual export above only ever reached the
+// browser that asked for it.
+function AutomaticBackups() {
+  const toast = useToast();
+  const [backups, setBackups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    api.get('/backups')
+      .then(r => setBackups(r.data.data || []))
+      .catch(() => setBackups([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
+
+  const runNow = async () => {
+    setRunning(true);
+    try {
+      const r = await api.post('/backups');
+      toast.success(`Backup saved (${formatBytes(r.data.data.size)})`);
+      load();
+    } catch { toast.error('Backup failed'); }
+    setRunning(false);
+  };
+
+  const download = (key) => {
+    const token = localStorage.getItem('token');
+    window.open(`/api/backups/download/${key.replace(/^backups\//, '')}?token=${encodeURIComponent(token)}`, '_blank');
+  };
+
+  return (
+    <div className="border-t border-gray-200 pt-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+        <h3 className="font-semibold text-gray-900">Automatic Backups</h3>
+        <button onClick={runNow} disabled={running}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+          <Database size={15} /> {running ? 'Backing up...' : 'Back up now'}
+        </button>
+      </div>
+      <p className="text-sm text-gray-500 mb-4">
+        A full snapshot is taken every night and the most recent 30 are kept. Download one to restore from it.
+      </p>
+
+      {loading ? (
+        <p className="text-sm text-gray-400 py-3">Loading backups...</p>
+      ) : backups.length === 0 ? (
+        <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-4 text-sm text-amber-800">
+          No backups stored yet. The first scheduled run happens tonight — or take one now with the button above.
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
+          {backups.map(b => (
+            <div key={b.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <div className="min-w-0">
+                <p className="text-sm text-gray-800 truncate">{new Date(b.created_at).toLocaleString()}</p>
+                <p className="text-xs text-gray-400">{formatBytes(b.size)}</p>
+              </div>
+              <button onClick={() => download(b.key)} className="text-sm text-blue-600 hover:underline shrink-0">Download</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
