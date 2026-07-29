@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api.js';
-import { ArrowLeft, Edit, Copy, Users, ChevronRight, CheckSquare, Square, AlertTriangle, Plus, Trash2, GripVertical, Shield, ShieldAlert, X, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Edit, Copy, Users, ChevronRight, CheckSquare, Square, AlertTriangle, Plus, Trash2, GripVertical, Shield, ShieldAlert, X, ChevronDown, IndianRupee } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const STAGES = ['applied', 'shortlisted', 'interview_scheduled', 'interview_done', 'demo_scheduled', 'demo_done', 'selected', 'offer_made', 'joined'];
 const TERMINAL = ['rejected', 'waitlisted', 'declined', 'no_response'];
@@ -376,6 +377,191 @@ function CompareSection({ vacancyId }) {
   );
 }
 
+const COST_TYPES = [
+  { value: 'advertising', label: 'Advertising' },
+  { value: 'agency', label: 'Agency Fees' },
+  { value: 'travel', label: 'Travel' },
+  { value: 'assessment', label: 'Assessment' },
+  { value: 'other', label: 'Other' },
+];
+
+// Written out in full — Tailwind purges interpolated class names.
+const COST_TYPE_STYLES = {
+  advertising: 'bg-blue-100 text-blue-700',
+  agency: 'bg-violet-100 text-violet-700',
+  travel: 'bg-amber-100 text-amber-700',
+  assessment: 'bg-cyan-100 text-cyan-700',
+  other: 'bg-gray-100 text-gray-600',
+};
+
+const inr = n => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+// Cost entry for this vacancy. Without it the cost-per-hire report on Reports
+// has no data to work with, since nothing else writes recruitment_costs.
+function CostsSection({ vacancyId }) {
+  const toast = useToast();
+  const { user } = useAuth();
+  const canEdit = ['super_admin', 'admin', 'hr'].includes(user?.role);
+  const canDelete = ['super_admin', 'admin'].includes(user?.role);
+
+  const [costs, setCosts] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [form, setForm] = useState({
+    cost_type: 'advertising', amount: '', description: '', date: new Date().toISOString().slice(0, 10),
+  });
+
+  const load = useCallback(() => {
+    api.get(`/vacancies/${vacancyId}/costs`).then(r => setCosts(r.data.data || [])).catch(() => {});
+    api.get(`/vacancies/${vacancyId}/cost-summary`).then(r => setSummary(r.data.data)).catch(() => {});
+  }, [vacancyId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const addCost = async () => {
+    const amount = Number(form.amount);
+    if (!Number.isFinite(amount) || amount <= 0) { toast.error('Enter an amount greater than zero'); return; }
+    setSaving(true);
+    try {
+      await api.post(`/vacancies/${vacancyId}/costs`, { ...form, amount });
+      toast.success('Cost added');
+      setForm({ cost_type: 'advertising', amount: '', description: '', date: new Date().toISOString().slice(0, 10) });
+      setShowForm(false);
+      load();
+    } catch { toast.error('Failed to add cost'); }
+    setSaving(false);
+  };
+
+  const removeCost = async (costId) => {
+    try {
+      await api.delete(`/vacancies/${vacancyId}/costs/${costId}`);
+      toast.success('Cost removed');
+      setDeleteConfirm(null);
+      load();
+    } catch { toast.error('Failed to remove cost'); }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5">
+          <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
+            <IndianRupee size={18} />
+          </span>
+          Recruitment Costs
+        </h2>
+        {canEdit && (
+          <button onClick={() => setShowForm(v => !v)} className="flex items-center gap-1 px-3 py-1.5 text-sm border border-emerald-200 text-emerald-600 rounded-lg hover:bg-emerald-50">
+            <Plus size={14} /> {showForm ? 'Cancel' : 'Add Cost'}
+          </button>
+        )}
+      </div>
+
+      {summary && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
+            <p className="text-xs text-emerald-700/70">Total Spend</p>
+            <p className="text-xl font-bold text-emerald-700">{inr(summary.total)}</p>
+          </div>
+          <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3">
+            <p className="text-xs text-blue-700/70">Candidates Joined</p>
+            <p className="text-xl font-bold text-blue-700">{summary.joined_count}</p>
+          </div>
+          <div className="rounded-lg border border-violet-100 bg-violet-50/50 p-3">
+            <p className="text-xs text-violet-700/70">Cost per Hire</p>
+            <p className="text-xl font-bold text-violet-700">
+              {summary.cost_per_hire == null ? <span className="text-sm font-medium text-violet-400">No hires yet</span> : inr(summary.cost_per_hire)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="mb-4 p-4 rounded-lg border border-emerald-100 bg-emerald-50/40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+            <select value={form.cost_type} onChange={e => setForm({ ...form, cost_type: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+              {COST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹)</label>
+            <input type="number" min="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })}
+              placeholder="0" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+            <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+            <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+              placeholder="e.g. Naukri job posting" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
+            <button onClick={addCost} disabled={saving}
+              className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 font-medium">
+              {saving ? 'Saving...' : 'Save Cost'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {costs.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center py-6">
+          No costs recorded yet.{canEdit && ' Add advertising, agency or travel spend to track cost per hire.'}
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
+                <th className="py-2 pr-3 font-medium">Type</th>
+                <th className="py-2 pr-3 font-medium">Description</th>
+                <th className="py-2 pr-3 font-medium">Date</th>
+                <th className="py-2 pr-3 font-medium">Added By</th>
+                <th className="py-2 pr-3 font-medium text-right">Amount</th>
+                {canDelete && <th className="py-2 w-20" />}
+              </tr>
+            </thead>
+            <tbody>
+              {costs.map(c => (
+                <tr key={c.id} className="border-b border-gray-100 last:border-0">
+                  <td className="py-2.5 pr-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${COST_TYPE_STYLES[c.cost_type] || COST_TYPE_STYLES.other}`}>
+                      {COST_TYPES.find(t => t.value === c.cost_type)?.label || c.cost_type}
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-3 text-gray-700">{c.description || <span className="text-gray-400">—</span>}</td>
+                  <td className="py-2.5 pr-3 text-gray-500">{c.date}</td>
+                  <td className="py-2.5 pr-3 text-gray-500">{c.created_by_name || '—'}</td>
+                  <td className="py-2.5 pr-3 text-right font-medium text-gray-900">{inr(c.amount)}</td>
+                  {canDelete && (
+                    <td className="py-2.5 text-right">
+                      {deleteConfirm === c.id ? (
+                        <span className="flex items-center justify-end gap-1">
+                          <button onClick={() => removeCost(c.id)} className="px-1.5 py-0.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">Yes</button>
+                          <button onClick={() => setDeleteConfirm(null)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs hover:bg-gray-100">No</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setDeleteConfirm(c.id)} className="p-1 text-gray-400 hover:text-red-600 rounded"><Trash2 size={14} /></button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VacancyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -558,6 +744,9 @@ export default function VacancyDetail() {
 
       {/* Eligibility Check */}
       <EligibilitySection vacancyId={id} />
+
+      {/* Recruitment Costs */}
+      <CostsSection vacancyId={id} />
 
       {/* Bulk Action Floating Bar */}
       {selected.size > 0 && (

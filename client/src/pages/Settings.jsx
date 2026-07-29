@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
-import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette, Send, CheckCircle2, XCircle, Building2, GraduationCap, CalendarRange, UsersRound, Database } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Shield, Download, Upload, Mail, KeyRound, Palette, Send, CheckCircle2, XCircle, Building2, GraduationCap, CalendarRange, UsersRound, Database, Timer, AlertTriangle } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import PasswordInput from '../components/PasswordInput.jsx';
 import { validatePassword, PASSWORD_RULE } from '../lib/password.js';
@@ -748,6 +748,136 @@ function DataTab() {
   );
 }
 
+// Stages an application can sit in while still live. The breach report skips
+// rejected/declined/no_response/joined, so there is nothing to configure there.
+const SLA_STAGES = [
+  'applied', 'shortlisted', 'interview_scheduled', 'interview_done',
+  'demo_scheduled', 'demo_done', 'selected', 'offer_made', 'waitlisted',
+];
+const SLA_DEFAULT_DAYS = 7; // matches the fallback in analytics.js
+
+function SlaTab() {
+  const toast = useToast();
+  const [days, setDays] = useState({});
+  const [saved, setSaved] = useState({});
+  const [breaches, setBreaches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      api.get('/analytics/sla-config').then(r => r.data.data || []).catch(() => []),
+      api.get('/analytics/sla-breaches').then(r => r.data.data || []).catch(() => []),
+    ]).then(([config, breachRows]) => {
+      const map = {};
+      SLA_STAGES.forEach(s => {
+        const row = config.find(c => c.stage === s);
+        map[s] = String(row?.max_days ?? SLA_DEFAULT_DAYS);
+      });
+      setDays(map);
+      setSaved(map);
+      setBreaches(Array.isArray(breachRows) ? breachRows : []);
+      setLoading(false);
+    });
+  };
+
+  useEffect(load, []);
+
+  const dirty = SLA_STAGES.filter(s => days[s] !== saved[s]);
+
+  const save = async () => {
+    const invalid = dirty.find(s => !Number.isInteger(Number(days[s])) || Number(days[s]) < 1);
+    if (invalid) { toast.error('Each limit must be a whole number of days, at least 1'); return; }
+    setSaving(true);
+    try {
+      // The endpoint upserts one stage at a time.
+      for (const stage of dirty) {
+        await api.post('/analytics/sla-config', { stage, max_days: Number(days[stage]) });
+      }
+      toast.success(`Updated ${dirty.length} stage limit${dirty.length === 1 ? '' : 's'}`);
+      load();
+    } catch { toast.error('Failed to save SLA limits'); }
+    setSaving(false);
+  };
+
+  if (loading) return <p className="text-sm text-gray-500 py-4">Loading...</p>;
+
+  const breachesByStage = breaches.reduce((acc, b) => {
+    acc[b.current_stage] = (acc[b.current_stage] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-lg border border-orange-100 bg-orange-50/50 p-4">
+        <p className="text-sm text-orange-800">
+          An application that stays in a stage longer than its limit is flagged as an SLA breach on the Reports page.
+          Stages you never set here fall back to {SLA_DEFAULT_DAYS} days.
+        </p>
+      </div>
+
+      {breaches.length > 0 && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-red-100 bg-red-50/60 p-4">
+          <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">
+            <strong>{breaches.length}</strong> application{breaches.length === 1 ? ' is' : 's are'} currently past their limit.
+            Raising a limit below will clear the matching breaches.
+          </p>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
+              <th className="py-2 pr-3 font-medium">Stage</th>
+              <th className="py-2 pr-3 font-medium w-40">Maximum Days</th>
+              <th className="py-2 font-medium">Currently Breaching</th>
+            </tr>
+          </thead>
+          <tbody>
+            {SLA_STAGES.map(stage => {
+              const count = breachesByStage[stage] || 0;
+              return (
+                <tr key={stage} className="border-b border-gray-100 last:border-0">
+                  <td className="py-2.5 pr-3 capitalize text-gray-800">{stage.replace(/_/g, ' ')}</td>
+                  <td className="py-2.5 pr-3">
+                    <input
+                      type="number" min="1" value={days[stage]}
+                      onChange={e => setDays({ ...days, [stage]: e.target.value })}
+                      className={`w-28 px-3 py-1.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-orange-500 ${
+                        days[stage] !== saved[stage] ? 'border-orange-400 bg-orange-50' : 'border-gray-300'
+                      }`}
+                    />
+                  </td>
+                  <td className="py-2.5">
+                    {count > 0
+                      ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">{count}</span>
+                      : <span className="text-xs text-gray-400">None</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-end gap-3">
+        {dirty.length > 0 && (
+          <button onClick={() => setDays(saved)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+            Discard
+          </button>
+        )}
+        <button onClick={save} disabled={saving || dirty.length === 0}
+          className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 font-medium">
+          {saving ? 'Saving...' : dirty.length ? `Save ${dirty.length} Change${dirty.length === 1 ? '' : 's'}` : 'Saved'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // A colour per tab: the banner adopts it, the content card gets a matching
 // accent strip, and the tab's icon carries it whether active or not.
 // Class strings are written out in full so Tailwind doesn't purge them.
@@ -787,6 +917,11 @@ const TAB_META = {
     banner: 'from-rose-600 via-pink-600 to-fuchsia-600',
     bar: 'bg-gradient-to-r from-rose-500 to-pink-500', text: 'text-rose-600',
   },
+  'sla': {
+    label: 'SLA', icon: Timer, desc: 'How long an application may sit in each stage',
+    banner: 'from-orange-600 via-amber-600 to-yellow-500',
+    bar: 'bg-gradient-to-r from-orange-500 to-amber-500', text: 'text-orange-600',
+  },
   'data': {
     label: 'Data', icon: Database, desc: 'Import, export and backups',
     banner: 'from-slate-700 via-slate-600 to-gray-600',
@@ -800,6 +935,7 @@ export default function Settings() {
   const meta = TAB_META[tab];
   const tabs = ['branding', 'departments', 'designations', 'academic-years'];
   if (user?.role === 'super_admin' || user?.role === 'admin') tabs.push('email-templates');
+  if (user?.role === 'super_admin' || user?.role === 'admin') tabs.push('sla');
   if (user?.role === 'super_admin') tabs.push('email', 'users', 'data');
 
   return (
@@ -842,6 +978,7 @@ export default function Settings() {
           {tab === 'designations' && <EditableList endpoint="/settings/designations" nameKey="title" label="Designation" />}
           {tab === 'academic-years' && <EditableList endpoint="/settings/academic-years" nameKey="label" label="Academic Year" />}
           {tab === 'email-templates' && <EmailTemplatesTab />}
+          {tab === 'sla' && <SlaTab />}
           {tab === 'email' && <EmailSettingsTab />}
           {tab === 'users' && <UsersTab />}
           {tab === 'data' && <DataTab />}
