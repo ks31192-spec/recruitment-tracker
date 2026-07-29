@@ -19,4 +19,16 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * URL for a stored upload. `<img>`/`<a>` cannot send an Authorization header,
+ * so the token rides along as a query parameter, which the server also accepts.
+ */
+export function fileUrl(path) {
+  if (!path) return '';
+  if (/^https?:\/\//.test(path)) return path;
+  const clean = String(path).replace(/\\/g, '/').replace(/^\/+/, '');
+  const token = localStorage.getItem('token');
+  return `/${clean}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+}
+
 export default api;

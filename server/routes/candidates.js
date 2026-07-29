@@ -5,6 +5,7 @@ import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { deleteFile } from '../lib/filestore.js';
 import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
 
@@ -664,8 +665,18 @@ router.delete('/:id/blacklist', authorize('super_admin', 'admin'), async (req, r
 });
 
 router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
-  const c = await db.prepare('SELECT id FROM candidates WHERE id = ?').get(req.params.id);
+  const c = await db.prepare('SELECT id, photo_path, resume_path FROM candidates WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).json({ success: false, error: 'Not found' });
+
+  // Stored files outlive the row now, so clear them out too.
+  const docs = await db.prepare('SELECT file_path FROM documents WHERE candidate_id = ?').all(req.params.id);
+  const stored = [...docs.map(d => d.file_path), c.photo_path, c.resume_path];
+  for (const p of stored) {
+    if (!p) continue;
+    const key = String(p).replace(/\\/g, '/').replace(/^\/?uploads\//, '');
+    try { await deleteFile(key); } catch (e) { console.error('Failed to remove file', key, e.message); }
+  }
+
   await db.prepare('DELETE FROM candidate_notes WHERE candidate_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM candidate_tags WHERE candidate_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM candidate_qualifications WHERE candidate_id = ?').run(req.params.id);

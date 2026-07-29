@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../lib/api.js';
+import api, { fileUrl } from '../lib/api.js';
 import {
   Users, Loader2, MessageSquareText, Phone, Mail, MapPin, FileText,
   CalendarDays, Presentation, CalendarCheck, Search, Download,
@@ -49,7 +49,7 @@ function CandidateRow({ row, bucket }) {
           <p className="text-xs text-gray-400 mt-1">Applied for: {row.vacancy_title}</p>
         </div>
         {row.resume_path && (
-          <a href={`/uploads/${row.resume_path.replace(/^uploads[\\/]/, '')}`} target="_blank" rel="noreferrer"
+          <a href={fileUrl(row.resume_path)} target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 shrink-0">
             <FileText size={13} /> Resume
           </a>

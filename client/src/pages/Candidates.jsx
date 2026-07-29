@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../lib/api.js';
+import api, { fileUrl } from '../lib/api.js';
 import { Plus, Search, Users, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Download } from 'lucide-react';
 
 const sourceLabels = { walk_in: 'Walk-in', naukri: 'Naukri', whatsapp: 'WhatsApp', referral: 'Referral', website: 'Website', direct_call: 'Direct Call', other: 'Other' };
@@ -96,7 +96,7 @@ export default function Candidates() {
                     <td className="px-4 py-3">
                       <Link to={`/candidates/${c.id}`} className="flex items-center gap-3 group">
                         {c.photo_path ? (
-                          <img src={`/${c.photo_path}`} alt="" className="w-9 h-9 rounded-full object-cover border border-gray-200 flex-shrink-0" />
+                          <img src={fileUrl(c.photo_path)} alt="" className="w-9 h-9 rounded-full object-cover border border-gray-200 flex-shrink-0" />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 flex-shrink-0">
                             {c.full_name?.charAt(0)?.toUpperCase()}

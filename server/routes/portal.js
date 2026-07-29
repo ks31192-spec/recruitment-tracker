@@ -3,9 +3,8 @@ import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import db from '../db/connection.js';
 import multer from 'multer';
-import { existsSync, mkdirSync } from 'fs';
-import { join, dirname, extname } from 'path';
-import { fileURLToPath } from 'url';
+import { extname } from 'path';
+import { saveFile, uniqueName } from '../lib/filestore.js';
 
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -15,24 +14,10 @@ const otpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '..', 'uploads');
-
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp']);
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const dir = join(uploadsDir, 'portal');
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, unique + extname(file.originalname));
-  },
-});
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = extname(file.originalname).toLowerCase();
@@ -155,7 +140,9 @@ router.post('/upload-document', upload.single('file'), async (req, res) => {
     return res.status(400).json({ success: false, error: 'File is required' });
   }
 
-  const filePath = `/uploads/portal/${req.file.filename}`;
+  const key = `portal/${uniqueName(req.file.originalname)}`;
+  await saveFile(key, req.file.buffer, { name: req.file.originalname, mime: req.file.mimetype });
+  const filePath = `uploads/${key}`;
   const r = await db
     .prepare('INSERT INTO documents (candidate_id, doc_type, file_name, file_path) VALUES (?, ?, ?, ?)')
     .run(candidate_id, 'other', req.file.originalname, filePath);

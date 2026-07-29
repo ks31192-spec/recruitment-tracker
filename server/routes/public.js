@@ -2,25 +2,9 @@ import { Router } from 'express';
 import db from '../db/connection.js';
 import { insertQualifications, insertExperience } from './candidates.js';
 import multer from 'multer';
-import { existsSync, mkdirSync } from 'fs';
-import { join, dirname, extname } from 'path';
-import { fileURLToPath } from 'url';
+import { saveFile, uniqueName } from '../lib/filestore.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '..', 'uploads');
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const dir = join(uploadsDir, 'applications');
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, unique + extname(file.originalname));
-  }
-});
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -83,8 +67,22 @@ router.post('/apply/:vacancyId', upload.single('resume'), async (req, res) => {
     }
   }
 
+  let resume_path = null;
+  if (req.file) {
+    const key = `applications/${uniqueName(req.file.originalname)}`;
+    await saveFile(key, req.file.buffer, { name: req.file.originalname, mime: req.file.mimetype });
+    resume_path = `uploads/${key}`;
+  }
+
+  if (candidateId && resume_path) {
+    // Re-applying with a fresh CV: keep the newest one on the record.
+    await db.prepare(`UPDATE candidates SET resume_path = ?, updated_at = datetime('now') WHERE id = ?`)
+      .run(resume_path, candidateId);
+    await db.prepare('INSERT INTO documents (candidate_id, doc_type, file_name, file_path) VALUES (?, ?, ?, ?)')
+      .run(candidateId, 'resume', req.file.originalname, resume_path);
+  }
+
   if (!candidateId) {
-    const resume_path = req.file ? `uploads/applications/${req.file.filename}` : null;
     const r = await db.prepare(`INSERT INTO candidates (full_name, father_or_husband_name, gender, date_of_birth, phone, whatsapp_number, email, current_city, current_state, current_salary, expected_salary, aadhar_number, oasis_id, is_fresher, source, resume_path, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)`)
       .run(full_name, father_or_husband_name || null, gender || null, date_of_birth || null, phone || null, whatsapp_number || null, email || null, current_city || null, current_state || null, fresher ? null : (current_salary || null), expected || null, aadhar, oasis_id || null, fresher ? 1 : 0, resume_path, 'Applied via careers page');
@@ -95,7 +93,7 @@ router.post('/apply/:vacancyId', upload.single('resume'), async (req, res) => {
 
     if (req.file) {
       await db.prepare('INSERT INTO documents (candidate_id, doc_type, file_name, file_path) VALUES (?, ?, ?, ?)')
-        .run(candidateId, 'resume', req.file.originalname, `uploads/applications/${req.file.filename}`);
+        .run(candidateId, 'resume', req.file.originalname, resume_path);
     }
   }
 

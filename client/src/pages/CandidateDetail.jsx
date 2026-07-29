@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import api from '../lib/api.js';
+import api, { fileUrl } from '../lib/api.js';
 import { useToast } from '../components/Toast.jsx';
 import ScheduleInterviewModal from '../components/ScheduleInterviewModal.jsx';
 import EvaluationModal from '../components/EvaluationModal.jsx';
@@ -291,7 +291,7 @@ export default function CandidateDetail() {
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="relative group">
             {candidate.photo_path ? (
-              <img src={`/${candidate.photo_path}`} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-white/40" />
+              <img src={fileUrl(candidate.photo_path)} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-white/40" />
             ) : (
               <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold text-white">
                 {candidate.full_name?.charAt(0)}
@@ -534,7 +534,7 @@ export default function CandidateDetail() {
                   <FileText size={18} className="text-gray-400" />
                   <div><p className="text-sm font-medium text-gray-900">{doc.file_name}</p><p className="text-xs text-gray-500 capitalize">{doc.doc_type.replace(/_/g, ' ')}</p></div>
                 </div>
-                <a href={`/${doc.file_path}`} target="_blank" className="text-sm text-blue-600 hover:underline">View</a>
+                <a href={fileUrl(doc.file_path)} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">View</a>
               </div>
             ))}
           </div>

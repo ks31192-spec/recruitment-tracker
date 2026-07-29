@@ -3,12 +3,11 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 
 dotenv.config();
 
 import { ensureReady, refreshFromFirestore } from './db/connection.js';
+import { readFile } from './lib/filestore.js';
 import { authenticate } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
@@ -31,13 +30,21 @@ import brandingRoutes, { manifestHandler } from './routes/branding.js';
 import emailRoutes from './routes/email.js';
 import talentPoolRoutes from './routes/talent-pool.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', authenticate, express.static(process.env.VERCEL ? '/tmp/uploads' : join(__dirname, 'uploads')));
+// Uploads live in the file store, not on disk — /tmp does not survive a cold start
+// on Vercel. `authenticate` also accepts `?token=`, which is what <img>/<a> use.
+app.get('/uploads/*', authenticate, async (req, res) => {
+  const file = await readFile(req.params[0]);
+  if (!file) return res.status(404).json({ success: false, error: 'File not found' });
+  res.setHeader('Content-Type', file.mime);
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.name)}"`);
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  res.send(file.buffer);
+});
 
 app.get('/api/health', async (_req, res) => {
   try {

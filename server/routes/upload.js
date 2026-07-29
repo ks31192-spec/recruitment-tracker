@@ -1,29 +1,14 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { existsSync, mkdirSync } from 'fs';
-import { join, dirname, extname } from 'path';
-import { fileURLToPath } from 'url';
+import { extname } from 'path';
 import db from '../db/connection.js';
 import { authenticate } from '../middleware/auth.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '..', 'uploads');
+import { saveFile, uniqueName } from '../lib/filestore.js';
 
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp']);
 
-const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = join(uploadsDir, String(req.params.id));
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, unique + extname(file.originalname));
-  }
-});
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = extname(file.originalname).toLowerCase();
@@ -35,19 +20,41 @@ const upload = multer({
 const router = Router();
 router.use(authenticate);
 
+// The id lands in the storage key, so keep it to digits.
+function candidateId(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ success: false, error: 'Invalid candidate id' });
+    return null;
+  }
+  return id;
+}
+
 router.post('/candidates/:id/documents', upload.single('file'), async (req, res) => {
+  const id = candidateId(req, res);
+  if (!id) return;
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   const doc_type = req.body.doc_type || 'other';
-  const relativePath = `uploads/${req.params.id}/${req.file.filename}`;
+  const relativePath = `uploads/${id}/${uniqueName(req.file.originalname)}`;
+  await saveFile(relativePath.slice('uploads/'.length), req.file.buffer, {
+    name: req.file.originalname,
+    mime: req.file.mimetype,
+  });
   const r = await db.prepare(`INSERT INTO documents (candidate_id, doc_type, file_name, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?)`)
-    .run(req.params.id, doc_type, req.file.originalname, relativePath, req.user.id);
+    .run(id, doc_type, req.file.originalname, relativePath, req.user.id);
   res.json({ success: true, data: { id: r.lastInsertRowid, file_name: req.file.originalname, file_path: relativePath } });
 });
 
 router.post('/candidates/:id/photo', upload.single('photo'), async (req, res) => {
+  const id = candidateId(req, res);
+  if (!id) return;
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
-  const relativePath = `uploads/${req.params.id}/${req.file.filename}`;
-  await db.prepare('UPDATE candidates SET photo_path = ?, updated_at = datetime("now") WHERE id = ?').run(relativePath, req.params.id);
+  const relativePath = `uploads/${id}/${uniqueName(req.file.originalname)}`;
+  await saveFile(relativePath.slice('uploads/'.length), req.file.buffer, {
+    name: req.file.originalname,
+    mime: req.file.mimetype,
+  });
+  await db.prepare('UPDATE candidates SET photo_path = ?, updated_at = datetime("now") WHERE id = ?').run(relativePath, id);
   res.json({ success: true, data: { photo_path: relativePath } });
 });
 
