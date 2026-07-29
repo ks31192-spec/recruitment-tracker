@@ -30,6 +30,7 @@ import brandingRoutes, { manifestHandler } from './routes/branding.js';
 import emailRoutes from './routes/email.js';
 import talentPoolRoutes from './routes/talent-pool.js';
 import backupRoutes, { cronBackupHandler } from './routes/backups.js';
+import maintenanceRoutes from './routes/maintenance.js';
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use('/api/referrals', referralRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/talent-pool', talentPoolRoutes);
 app.use('/api/backups', backupRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/export', exportRoutes);
 
