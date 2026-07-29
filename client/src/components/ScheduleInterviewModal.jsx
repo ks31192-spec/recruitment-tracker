@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api.js';
 import { X } from 'lucide-react';
+import { useToast } from './Toast.jsx';
 
 export default function ScheduleInterviewModal({ applicationId, onClose, onDone }) {
+  const toast = useToast();
   const [form, setForm] = useState({
     interview_type: 'interview', scheduled_date: '', scheduled_time: '',
     mode: 'in_person', location_or_link: '', demo_topic: '', demo_class: '',
@@ -34,7 +36,7 @@ export default function ScheduleInterviewModal({ applicationId, onClose, onDone 
       onDone?.();
       onClose();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to schedule');
+      toast.error(err.response?.data?.error || 'Failed to schedule');
     } finally { setSaving(false); }
   };
 

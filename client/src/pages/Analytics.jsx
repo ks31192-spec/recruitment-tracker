@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api.js';
 import { BarChart3, TrendingUp, Users, Clock, Target, Award } from 'lucide-react';
+import { Spinner } from '../components/States.jsx';
 
 function Card({ title, icon: Icon, children }) {
   return (
@@ -36,13 +37,21 @@ export default function Analytics() {
   const [offers, setOffers] = useState(null);
   const [tab, setTab] = useState('funnel');
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    api.get('/analytics/time-to-hire').then(r => setTimeToHire(r.data.data));
-    api.get('/analytics/stage-funnel').then(r => setFunnel(r.data.data.funnel));
-    api.get('/analytics/source-effectiveness').then(r => setSources(r.data.data));
-    api.get('/analytics/vacancy-aging').then(r => setAging(r.data.data));
-    api.get('/analytics/recruiter-workload').then(r => setWorkload(r.data.data));
-    api.get('/analytics/offer-acceptance').then(r => setOffers(r.data.data));
+    // None of these had a catch: one failing report threw an unhandled rejection
+    // and left its tab permanently blank with no explanation.
+    const get = (url, set, pick, fallback) =>
+      api.get(url).then(r => set(pick(r.data.data) ?? fallback)).catch(() => set(fallback));
+    Promise.all([
+      get('/analytics/time-to-hire', setTimeToHire, d => d, []),
+      get('/analytics/stage-funnel', setFunnel, d => d?.funnel, []),
+      get('/analytics/source-effectiveness', setSources, d => d, []),
+      get('/analytics/vacancy-aging', setAging, d => d, []),
+      get('/analytics/recruiter-workload', setWorkload, d => d, []),
+      get('/analytics/offer-acceptance', setOffers, d => d, null),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const tabs = [
@@ -82,7 +91,13 @@ export default function Analytics() {
         ))}
       </div>
 
-      {tab === 'funnel' && (
+      {loading && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <Spinner label="Crunching the numbers..." />
+        </div>
+      )}
+
+      {!loading && tab === 'funnel' && (
         <Card title="Stage Conversion Funnel" icon={TrendingUp}>
           {funnel.length === 0 ? <p className="text-sm text-gray-500">No application data yet.</p> : (
             <div className="space-y-1">
@@ -102,7 +117,7 @@ export default function Analytics() {
         </Card>
       )}
 
-      {tab === 'sources' && (
+      {!loading && tab === 'sources' && (
         <Card title="Source Effectiveness" icon={Target}>
           {sources.length === 0 ? <p className="text-sm text-gray-500">No data yet.</p> : (
             <div className="overflow-x-auto">
@@ -132,7 +147,7 @@ export default function Analytics() {
         </Card>
       )}
 
-      {tab === 'time' && (
+      {!loading && tab === 'time' && (
         <Card title="Average Time to Hire (Days)" icon={Clock}>
           {timeToHire.length === 0 ? <p className="text-sm text-gray-500">No hires yet to calculate.</p> : (
             <div className="space-y-1">
@@ -145,7 +160,7 @@ export default function Analytics() {
         </Card>
       )}
 
-      {tab === 'aging' && (
+      {!loading && tab === 'aging' && (
         <Card title="Open Vacancy Aging" icon={BarChart3}>
           {aging.length === 0 ? <p className="text-sm text-gray-500">No open vacancies.</p> : (
             <div className="overflow-x-auto">
@@ -174,7 +189,7 @@ export default function Analytics() {
         </Card>
       )}
 
-      {tab === 'workload' && (
+      {!loading && tab === 'workload' && (
         <Card title="Recruiter Workload" icon={Users}>
           {workload.length === 0 ? <p className="text-sm text-gray-500">No active recruiters.</p> : (
             <div className="overflow-x-auto">
@@ -198,7 +213,7 @@ export default function Analytics() {
         </Card>
       )}
 
-      {tab === 'offers' && (
+      {!loading && tab === 'offers' && (
         <Card title="Offer Acceptance" icon={Award}>
           {!offers ? <p className="text-sm text-gray-500">Loading...</p> : offers.total_offers === 0 ? <p className="text-sm text-gray-500">No offers made yet.</p> : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

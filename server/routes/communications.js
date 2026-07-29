@@ -6,7 +6,9 @@ import { sendCustomEmail, sendTemplateEmail } from '../lib/email.js';
 const router = Router();
 router.use(authenticate);
 
-router.post('/', async (req, res) => {
+// This can send real email to a candidate in the school's name, so it is not
+// something a viewer or panel member should be able to trigger.
+router.post('/', authorize('super_admin', 'admin', 'hr'), async (req, res) => {
   const { candidate_id, application_id, comm_type, direction, summary, outcome, follow_up_date, email_subject, email_body, template_id } = req.body;
   if (!candidate_id || !comm_type || !direction) {
     return res.status(400).json({ success: false, error: 'candidate_id, comm_type, direction required' });

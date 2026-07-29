@@ -11,7 +11,10 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    // A failed sign-in is also a 401; redirecting from the login page would
+    // discard the error the user needs to read.
+    const onLoginPage = window.location.pathname === '/login';
+    if (err.response?.status === 401 && !onLoginPage) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

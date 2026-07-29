@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api, { fileUrl } from '../lib/api.js';
 import { Plus, Search, Users, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Download } from 'lucide-react';
+import { TableSkeleton, EmptyState, ErrorState } from '../components/States.jsx';
 
 const sourceLabels = { walk_in: 'Walk-in', naukri: 'Naukri', whatsapp: 'WhatsApp', referral: 'Referral', website: 'Website', direct_call: 'Direct Call', other: 'Other' };
 const sourceColors = {
@@ -20,10 +21,16 @@ export default function Candidates() {
   const [search, setSearch] = useState('');
   const [source, setSource] = useState('');
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
     api.get('/candidates', { params: { search: search || undefined, source: source || undefined, page } })
-      .then(r => setData(r.data.data));
+      .then(r => setData(r.data.data))
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, [search, source, page]);
 
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [load]);
@@ -67,14 +74,44 @@ export default function Candidates() {
         </select>
       </div>
 
-      {data.candidates.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
-          <Users className="mx-auto text-gray-300 mb-4" size={56} />
-          <p className="text-gray-500 text-lg font-medium">No candidates found</p>
-          <p className="text-sm text-gray-400 mt-1">Try adjusting your search or filters</p>
-          <Link to="/candidates/new" className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 mt-4">
-            <Plus size={16} /> Add First Candidate
-          </Link>
+      {loading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <TableSkeleton rows={8} cols={5} />
+        </div>
+      ) : failed ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <ErrorState message="Could not load candidates." onRetry={load} />
+        </div>
+      ) : data.candidates.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          {/* A filtered-to-nothing list is a different situation from an empty
+              database — offering "Add First Candidate" there is misleading. */}
+          {search || source ? (
+            <EmptyState
+              icon={Search}
+              tone="slate"
+              title="No candidates match those filters"
+              hint="Try a different search term, or clear the filters to see everyone."
+              action={
+                <button onClick={() => { setSearch(''); setSource(''); setPage(1); }}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Clear filters
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={Users}
+              tone="emerald"
+              title="No candidates yet"
+              hint="Add candidates by hand, import a spreadsheet, or share your careers page."
+              action={
+                <Link to="/candidates/new" className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700">
+                  <Plus size={16} /> Add First Candidate
+                </Link>
+              }
+            />
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

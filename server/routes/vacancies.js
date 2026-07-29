@@ -267,6 +267,19 @@ router.get('/:id/compare', async (req, res) => {
 router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
   const v = await db.prepare('SELECT id FROM vacancies WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ success: false, error: 'Not found' });
+
+  // Applications carry a NOT NULL vacancy_id and cannot be reassigned, so deleting
+  // the vacancy would leave every applicant's pipeline history pointing at a row
+  // that no longer exists — and the list queries all INNER JOIN vacancies, so those
+  // applications would simply vanish from the UI. Closing keeps the record instead.
+  const applicants = (await db.prepare('SELECT COUNT(*) as c FROM applications WHERE vacancy_id = ?').get(req.params.id))?.c || 0;
+  if (applicants > 0) {
+    return res.status(409).json({
+      success: false,
+      error: `This vacancy has ${applicants} application${applicants === 1 ? '' : 's'} against it. Close the vacancy instead of deleting it, so the hiring history is kept.`,
+    });
+  }
+
   await db.prepare('DELETE FROM screening_questions WHERE vacancy_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM document_checklist WHERE vacancy_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM recruitment_costs WHERE vacancy_id = ?').run(req.params.id);

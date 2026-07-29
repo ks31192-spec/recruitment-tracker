@@ -34,11 +34,19 @@ export default function Dashboard() {
   const [pipeline, setPipeline] = useState([]);
   const [sources, setSources] = useState([]);
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    api.get('/dashboard/summary').then(r => setSummary(r.data.data));
-    api.get('/dashboard/recent-activity').then(r => setActivity(r.data.data));
-    api.get('/dashboard/pipeline-summary').then(r => setPipeline(r.data.data));
-    api.get('/dashboard/source-analysis').then(r => setSources(r.data.data));
+    // Each widget stands alone, so a failure in one must not blank the others —
+    // and none of these had a catch, so any failure was an unhandled rejection.
+    const get = (url, set, fallback) =>
+      api.get(url).then(r => set(r.data.data ?? fallback)).catch(() => set(fallback));
+    Promise.all([
+      get('/dashboard/summary', setSummary, {}),
+      get('/dashboard/recent-activity', setActivity, []),
+      get('/dashboard/pipeline-summary', setPipeline, []),
+      get('/dashboard/source-analysis', setSources, []),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const maxPipeline = Math.max(...pipeline.map(p => p.count), 1);
@@ -81,7 +89,9 @@ export default function Dashboard() {
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                 )}
               </div>
-              <p className="text-2xl font-bold text-gray-900">{val ?? '-'}</p>
+              {loading
+                ? <div className="h-8 w-12 bg-gray-200 rounded animate-pulse" />
+                : <p className="text-2xl font-bold text-gray-900">{val ?? '-'}</p>}
               <p className="text-xs text-gray-500 mt-1">{card.label}</p>
             </div>
           );

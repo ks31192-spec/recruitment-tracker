@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api.js';
 import { CalendarCheck, Clock, MapPin, Users, Video, Building } from 'lucide-react';
+import { CardSkeleton, EmptyState, ErrorState } from '../components/States.jsx';
 
 const statusColors = {
   scheduled: 'bg-blue-100 text-blue-700', completed: 'bg-green-100 text-green-700',
@@ -11,11 +12,20 @@ const statusColors = {
 export default function Interviews() {
   const [tab, setTab] = useState('today');
   const [interviews, setInterviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
     const endpoint = tab === 'today' ? '/interviews/schedule/today' : '/interviews/schedule/upcoming';
-    api.get(endpoint).then(r => setInterviews(r.data.data));
+    api.get(endpoint)
+      .then(r => setInterviews(r.data.data || []))
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, [tab]);
+
+  useEffect(load, [load]);
 
   return (
     <div className="space-y-5">
@@ -32,10 +42,19 @@ export default function Interviews() {
         <button onClick={() => setTab('upcoming')} className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${tab === 'upcoming' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}>Upcoming</button>
       </div>
 
-      {interviews.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <CalendarCheck className="mx-auto text-gray-300 mb-3" size={48} />
-          <p className="text-gray-500">No {tab === 'today' ? "interviews today" : "upcoming interviews"}</p>
+      {loading ? (
+        <CardSkeleton count={3} />
+      ) : failed ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <ErrorState message="Could not load interviews." onRetry={load} />
+        </div>
+      ) : interviews.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <EmptyState
+            icon={CalendarCheck}
+            title={tab === 'today' ? 'No interviews today' : 'No upcoming interviews'}
+            hint="Interviews are scheduled from a candidate's application on the vacancy pipeline."
+          />
         </div>
       ) : (
         <div className="space-y-3">

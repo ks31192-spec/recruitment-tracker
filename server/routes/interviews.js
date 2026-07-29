@@ -79,6 +79,15 @@ router.put('/:id/remarks', authorize('super_admin', 'admin', 'hr'), async (req, 
 
 router.post('/:id/evaluate', async (req, res) => {
   const { subject_knowledge, communication, teaching_aptitude, confidence_personality, tech_comfort, overall_impression, strengths, concerns, recommendation, private_notes } = req.body;
+
+  // Scoring belongs to the people actually on the panel; the recruiting roles may
+  // also record one. Anyone else has no business rating this candidate.
+  const onPanel = await db.prepare('SELECT 1 as ok FROM interview_panel WHERE interview_id = ? AND user_id = ?')
+    .get(req.params.id, req.user.id);
+  if (!onPanel && !['super_admin', 'admin', 'hr'].includes(req.user.role)) {
+    return res.status(403).json({ success: false, error: 'You are not on the panel for this interview' });
+  }
+
   try {
     const r = await db.prepare(`INSERT INTO evaluations (interview_id, evaluator_id, subject_knowledge, communication, teaching_aptitude, confidence_personality, tech_comfort, overall_impression, strengths, concerns, recommendation, private_notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.params.id, req.user.id, subject_knowledge, communication, teaching_aptitude, confidence_personality, tech_comfort, overall_impression, strengths || null, concerns || null, recommendation || null, private_notes || null);

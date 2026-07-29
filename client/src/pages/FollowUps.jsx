@@ -1,16 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api.js';
 import { Bell, Phone, MessageCircle, Mail, User } from 'lucide-react';
+import { CardSkeleton, EmptyState, ErrorState } from '../components/States.jsx';
 
 const typeIcons = { call: Phone, whatsapp: MessageCircle, email: Mail, sms: MessageCircle, in_person: User };
 
 export default function FollowUps() {
   const [followups, setFollowups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    api.get('/communications/follow-ups').then(r => setFollowups(r.data.data));
+  const load = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
+    api.get('/communications/follow-ups')
+      .then(r => setFollowups(r.data.data || []))
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(load, [load]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -25,10 +35,20 @@ export default function FollowUps() {
         </div>
       </div>
 
-      {followups.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Bell className="mx-auto text-gray-300 mb-3" size={48} />
-          <p className="text-gray-500">No pending follow-ups</p>
+      {loading ? (
+        <CardSkeleton count={3} />
+      ) : failed ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <ErrorState message="Could not load follow-ups." onRetry={load} />
+        </div>
+      ) : followups.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <EmptyState
+            icon={Bell}
+            tone="amber"
+            title="Nothing to follow up"
+            hint="Log a call or message against a candidate with a follow-up date and it will appear here."
+          />
         </div>
       ) : (
         <div className="space-y-3">

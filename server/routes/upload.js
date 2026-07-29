@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { extname } from 'path';
 import db from '../db/connection.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { saveFile, uniqueName } from '../lib/filestore.js';
 
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp']);
@@ -19,6 +19,9 @@ const upload = multer({
 
 const router = Router();
 router.use(authenticate);
+// Writing to a candidate's file is a recruiting action — viewers and panel
+// members get read access only.
+const canUpload = authorize('super_admin', 'admin', 'hr');
 
 // The id lands in the storage key, so keep it to digits.
 function candidateId(req, res) {
@@ -30,7 +33,7 @@ function candidateId(req, res) {
   return id;
 }
 
-router.post('/candidates/:id/documents', upload.single('file'), async (req, res) => {
+router.post('/candidates/:id/documents', canUpload, upload.single('file'), async (req, res) => {
   const id = candidateId(req, res);
   if (!id) return;
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
@@ -45,7 +48,7 @@ router.post('/candidates/:id/documents', upload.single('file'), async (req, res)
   res.json({ success: true, data: { id: r.lastInsertRowid, file_name: req.file.originalname, file_path: relativePath } });
 });
 
-router.post('/candidates/:id/photo', upload.single('photo'), async (req, res) => {
+router.post('/candidates/:id/photo', canUpload, upload.single('photo'), async (req, res) => {
   const id = candidateId(req, res);
   if (!id) return;
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });

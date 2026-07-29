@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import db from '../db/connection.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { deleteFile } from '../lib/filestore.js';
+import { deleteApplicationsCascade } from '../lib/cascade.js';
 import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
 
@@ -685,7 +686,10 @@ router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
   await db.prepare('DELETE FROM blacklist WHERE candidate_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM communication_log WHERE candidate_id = ?').run(req.params.id);
   await db.prepare('DELETE FROM candidate_portal_tokens WHERE candidate_id = ?').run(req.params.id);
-  await db.prepare('DELETE FROM applications WHERE candidate_id = ?').run(req.params.id);
+  // Interviews, panels, evaluations and offers hang off the applications and would
+  // otherwise be left behind pointing at rows that no longer exist.
+  const apps = await db.prepare('SELECT id FROM applications WHERE candidate_id = ?').all(req.params.id);
+  await deleteApplicationsCascade(db, apps.map(a => a.id));
   await db.prepare('DELETE FROM candidates WHERE id = ?').run(req.params.id);
   res.json({ success: true, data: { message: 'Candidate deleted' } });
 });

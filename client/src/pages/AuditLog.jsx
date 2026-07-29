@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api.js';
 import { Shield, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TableSkeleton, EmptyState, ErrorState } from '../components/States.jsx';
 
 export default function AuditLog() {
   const [logs, setLogs] = useState([]);
@@ -8,17 +9,26 @@ export default function AuditLog() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [filters, setFilters] = useState({ entity_type: '', action: '' });
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
     const params = { page, limit: 50 };
     if (filters.entity_type) params.entity_type = filters.entity_type;
     if (filters.action) params.action = filters.action;
-    api.get('/audit', { params }).then(r => {
-      setLogs(r.data.data.logs);
-      setTotal(r.data.data.total);
-      setPages(r.data.data.pages);
-    });
+    api.get('/audit', { params })
+      .then(r => {
+        setLogs(r.data.data.logs || []);
+        setTotal(r.data.data.total);
+        setPages(r.data.data.pages);
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, [page, filters]);
+
+  useEffect(load, [load]);
 
   const entityTypes = ['candidate', 'vacancy', 'application', 'interview', 'offer', 'user', 'department', 'designation'];
 
@@ -59,8 +69,19 @@ export default function AuditLog() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {logs.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-12 text-gray-500">No audit entries found</td></tr>
+              {loading ? (
+                <tr><td colSpan={5} className="px-4 py-5"><TableSkeleton rows={6} cols={5} /></td></tr>
+              ) : failed ? (
+                <tr><td colSpan={5}><ErrorState message="Could not load the audit log." onRetry={load} /></td></tr>
+              ) : logs.length === 0 ? (
+                <tr><td colSpan={5}>
+                  <EmptyState
+                    icon={Shield}
+                    tone="slate"
+                    title="No audit entries found"
+                    hint={filters.entity_type || filters.action ? 'No activity matches these filters.' : 'Activity is recorded here as people use the system.'}
+                  />
+                </td></tr>
               ) : logs.map(log => (
                 <tr key={log.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</td>

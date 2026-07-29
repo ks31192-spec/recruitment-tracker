@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import api from '../lib/api.js';
 import { useToast } from '../components/Toast.jsx';
 import { UserPlus, Award, Users, X, TrendingUp } from 'lucide-react';
+import { TableSkeleton, EmptyState } from '../components/States.jsx';
 
 const statusColors = {
   submitted: 'bg-gray-100 text-gray-700',
@@ -27,15 +28,21 @@ export default function Referrals() {
   const [form, setForm] = useState({ candidate_name: '', candidate_phone: '', candidate_email: '', vacancy_id: '', notes: '' });
   const [submitting, setSubmitting] = useState(false);
 
+  const [loading, setLoading] = useState(true);
+
   const load = () => {
-    api.get('/referrals').then(r => setReferrals(r.data.data));
-    if (isAdmin) api.get('/referrals/stats').then(r => setStats(r.data.data));
+    setLoading(true);
+    api.get('/referrals')
+      .then(r => setReferrals(r.data.data || []))
+      .catch(() => setReferrals([]))
+      .finally(() => setLoading(false));
+    if (isAdmin) api.get('/referrals/stats').then(r => setStats(r.data.data)).catch(() => {});
   };
 
   useEffect(() => { load(); }, []);
 
   const openModal = () => {
-    api.get('/vacancies?status=open').then(r => setVacancies(r.data.data));
+    api.get('/vacancies?status=open').then(r => setVacancies(r.data.data || [])).catch(() => setVacancies([]));
     setForm({ candidate_name: '', candidate_phone: '', candidate_email: '', vacancy_id: '', notes: '' });
     setShowModal(true);
   };
@@ -146,10 +153,16 @@ export default function Referrals() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {referrals.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-12 text-gray-400">No referrals yet. Be the first to refer a candidate!</td></tr>
+              {loading && (
+                <tr><td colSpan={6} className="px-4 py-5"><TableSkeleton rows={4} cols={6} /></td></tr>
               )}
-              {referrals.map(r => (
+              {!loading && referrals.length === 0 && (
+                <tr><td colSpan={6}>
+                  <EmptyState icon={Users} tone="cyan" title="No referrals yet"
+                    hint="Be the first to refer a candidate — referrals are tracked through to hire." />
+                </td></tr>
+              )}
+              {!loading && referrals.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{r.candidate_name}</p>

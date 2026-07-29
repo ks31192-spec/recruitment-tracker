@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api.js';
-import { Plus, Briefcase, Users, MapPin } from 'lucide-react';
+import { Plus, Briefcase, Users } from 'lucide-react';
+import { CardSkeleton, EmptyState, ErrorState } from '../components/States.jsx';
 
 const tabs = ['open', 'interviewing', 'filled', 'closed', 'all'];
 const statusColors = {
@@ -15,10 +16,19 @@ const statusColors = {
 export default function Vacancies() {
   const [vacancies, setVacancies] = useState([]);
   const [tab, setTab] = useState('open');
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    api.get('/vacancies', { params: { status: tab } }).then(r => setVacancies(r.data.data));
+  const load = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
+    api.get('/vacancies', { params: { status: tab } })
+      .then(r => setVacancies(r.data.data || []))
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, [tab]);
+
+  useEffect(load, [load]);
 
   return (
     <div className="space-y-5">
@@ -45,10 +55,25 @@ export default function Vacancies() {
         ))}
       </div>
 
-      {vacancies.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Briefcase className="mx-auto text-gray-300 mb-3" size={48} />
-          <p className="text-gray-500">No vacancies found</p>
+      {loading ? (
+        <CardSkeleton count={6} />
+      ) : failed ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <ErrorState message="Could not load vacancies." onRetry={load} />
+        </div>
+      ) : vacancies.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <EmptyState
+            icon={Briefcase}
+            tone="violet"
+            title={tab === 'all' ? 'No vacancies yet' : `No ${tab} vacancies`}
+            hint={tab === 'all' ? 'Create your first vacancy to start tracking applicants.' : 'Try another tab to see vacancies in a different state.'}
+            action={tab === 'all' ? (
+              <Link to="/vacancies/new" className="inline-flex items-center gap-1.5 px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700">
+                <Plus size={16} /> Create Vacancy
+              </Link>
+            ) : null}
+          />
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

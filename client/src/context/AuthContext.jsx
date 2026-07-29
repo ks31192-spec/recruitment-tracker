@@ -9,14 +9,33 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
+    if (!token) { setLoading(false); return; }
+
+    // Only a straight rejection of the token means the session is really over.
+    // A network blip or a cold-start timeout used to discard it too, which
+    // logged people out at random.
+    let cancelled = false;
+    const attempt = (triesLeft, delay) => {
       api.get('/auth/me')
-        .then(r => setUser(r.data.data))
-        .catch(() => localStorage.removeItem('token'))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+        .then(r => { if (!cancelled) { setUser(r.data.data); setLoading(false); } })
+        .catch(err => {
+          if (cancelled) return;
+          const status = err.response?.status;
+          if (status === 401 || status === 403) {
+            localStorage.removeItem('token');
+            setLoading(false);
+            return;
+          }
+          if (triesLeft > 0) {
+            setTimeout(() => attempt(triesLeft - 1, delay * 2), delay);
+            return;
+          }
+          // Server unreachable — keep the token so the session survives.
+          setLoading(false);
+        });
+    };
+    attempt(2, 1000);
+    return () => { cancelled = true; };
   }, []);
 
   const login = async (email, password) => {
