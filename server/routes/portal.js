@@ -5,6 +5,7 @@ import db from '../db/connection.js';
 import multer from 'multer';
 import { extname } from 'path';
 import { saveFile, uniqueName } from '../lib/filestore.js';
+import { sendPortalOtp } from '../lib/email.js';
 
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -13,6 +14,23 @@ const otpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// A 6-digit code is only 1,000,000 guesses, so verification needs its own cap.
+const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, error: 'Too many verification attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Show the candidate which address the code went to without publishing it in full.
+function maskEmail(email) {
+  const [user, domain] = String(email).split('@');
+  if (!domain) return '';
+  const shown = user.length <= 2 ? user.slice(0, 1) : user.slice(0, 2);
+  return `${shown}${'•'.repeat(Math.max(3, user.length - shown.length))}@${domain}`;
+}
 
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp']);
 
@@ -28,38 +46,70 @@ const upload = multer({
 
 const router = Router();
 
-// Request OTP
+// Request OTP. The code is delivered by email — the candidate may look themselves
+// up by phone or by email, but either way it goes to the address on their record.
 router.post('/request-otp', otpLimiter, async (req, res) => {
-  const { phone } = req.body;
-  if (!phone?.trim()) {
-    return res.status(400).json({ success: false, error: 'Phone number is required' });
+  const identifier = String(req.body.identifier ?? req.body.phone ?? '').trim();
+  if (!identifier) {
+    return res.status(400).json({ success: false, error: 'Phone number or email is required' });
   }
 
   const candidate = await db
-    .prepare('SELECT id, full_name, phone FROM candidates WHERE phone = ? OR whatsapp_number = ?')
-    .get(phone.trim(), phone.trim());
+    .prepare(`SELECT id, full_name, phone, email FROM candidates
+              WHERE phone = ? OR whatsapp_number = ? OR lower(email) = lower(?)`)
+    .get(identifier, identifier, identifier);
 
   if (!candidate) {
-    return res.status(404).json({ success: false, error: 'No candidate found with this phone number' });
+    return res.status(404).json({ success: false, error: 'No application found for that phone number or email' });
+  }
+  if (!candidate.email?.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'We do not have an email address on your application, so we cannot send a login code. Please contact the school office.',
+    });
   }
 
   const otp = String(Math.floor(100000 + Math.random() * 900000));
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  await db
-    .prepare('INSERT INTO candidate_portal_tokens (candidate_id, phone, otp, expires_at) VALUES (?, ?, ?, ?)')
-    .run(candidate.id, phone.trim(), otp, expiresAt);
+  // Retire any earlier unused codes so only the newest one works.
+  await db.prepare(
+    `DELETE FROM candidate_portal_tokens WHERE candidate_id = ? AND otp NOT LIKE 'session:%'`
+  ).run(candidate.id);
 
-  // TODO: integrate real SMS provider (Twilio/MSG91) to send OTP
+  const inserted = await db
+    .prepare('INSERT INTO candidate_portal_tokens (candidate_id, phone, otp, expires_at) VALUES (?, ?, ?, ?)')
+    .run(candidate.id, identifier, otp, expiresAt);
+
+  const delivery = await sendPortalOtp(candidate.email.trim(), candidate.full_name, otp);
+
+  if (!delivery.sent) {
+    // Without email configured at all there is no way in locally, so fall back to
+    // returning the code off-production rather than leaving the portal unusable.
+    if (!process.env.VERCEL && delivery.reason === 'no_api_key') {
+      return res.json({
+        success: true,
+        data: { message: 'Email is not configured — showing the code for local testing.', otp, email_hint: maskEmail(candidate.email) },
+      });
+    }
+    // Don't leave a live code behind for a message that never went out.
+    await db.prepare('DELETE FROM candidate_portal_tokens WHERE id = ?').run(inserted.lastInsertRowid);
+    return res.status(502).json({
+      success: false,
+      error: `We could not send your login code: ${delivery.reason}. Please contact the school office.`,
+    });
+  }
+
   res.json({
     success: true,
-    data: { message: 'OTP sent to your registered phone number' },
+    data: { message: 'Login code sent', email_hint: maskEmail(candidate.email) },
   });
 });
 
 // Verify OTP
-router.post('/verify-otp', async (req, res) => {
-  const { phone, otp } = req.body;
+router.post('/verify-otp', verifyLimiter, async (req, res) => {
+  const phone = String(req.body.identifier ?? req.body.phone ?? '').trim();
+  const { otp } = req.body;
   if (!phone || !otp) {
     return res.status(400).json({ success: false, error: 'Phone and OTP are required' });
   }

@@ -122,9 +122,11 @@ function StageProgress({ currentStage }) {
 
 export default function CandidatePortal() {
   const [step, setStep] = useState(1);
-  const [phone, setPhone] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [displayOtp, setDisplayOtp] = useState('');
+  const [emailHint, setEmailHint] = useState('');
+  const [resent, setResent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
@@ -133,16 +135,20 @@ export default function CandidatePortal() {
   const [dragOver, setDragOver] = useState(false);
   const { schoolName } = useBranding();
 
-  const requestOtp = async () => {
+  const sendCode = async ({ isResend } = {}) => {
     setError('');
-    if (!phone.trim()) { setError('Please enter your phone number'); return; }
+    setResent('');
+    if (!identifier.trim()) { setError('Please enter your phone number or email'); return; }
     setLoading(true);
     try {
-      const res = await axios.post('/api/portal/request-otp', { phone: phone.trim() });
-      setDisplayOtp(res.data.data.otp);
+      const res = await axios.post('/api/portal/request-otp', { identifier: identifier.trim() });
+      // Only returned when email is unconfigured off-production.
+      setDisplayOtp(res.data.data.otp || '');
+      setEmailHint(res.data.data.email_hint || '');
+      if (isResend) setResent('A new code is on its way.');
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send OTP');
+      setError(err.response?.data?.error || 'Failed to send the login code');
     } finally {
       setLoading(false);
     }
@@ -150,14 +156,14 @@ export default function CandidatePortal() {
 
   const verifyOtp = async () => {
     setError('');
-    if (!otp.trim()) { setError('Please enter the OTP'); return; }
+    if (!otp.trim()) { setError('Please enter the code'); return; }
     setLoading(true);
     try {
-      const res = await axios.post('/api/portal/verify-otp', { phone: phone.trim(), otp: otp.trim() });
+      const res = await axios.post('/api/portal/verify-otp', { identifier: identifier.trim(), otp: otp.trim() });
       setData(res.data.data);
       setStep(3);
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid OTP');
+      setError(err.response?.data?.error || 'Invalid code');
     } finally {
       setLoading(false);
     }
@@ -172,6 +178,7 @@ export default function CandidatePortal() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('candidate_id', data.candidate.id);
+      fd.append('session_token', data.session_token);
       const res = await axios.post('/api/portal/upload-document', fd);
       setUploadSuccess(`Uploaded: ${res.data.data.file_name}`);
       setData(prev => ({
@@ -217,29 +224,30 @@ export default function CandidatePortal() {
                   <Phone className="w-7 h-7 text-blue-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">Check Your Application Status</h2>
-                <p className="text-gray-500 text-sm mt-1">Enter the phone number you used while applying</p>
+                <p className="text-gray-500 text-sm mt-1">Enter the phone number or email you used while applying</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number or Email</label>
                   <input
-                    type="tel"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && requestOtp()}
-                    placeholder="Enter your phone number"
+                    type="text"
+                    value={identifier}
+                    onChange={e => setIdentifier(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendCode()}
+                    placeholder="e.g. 9876543210 or you@example.com"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
+                  <p className="text-xs text-gray-400 mt-1.5">We'll email a one-time code to the address on your application.</p>
                 </div>
                 {error && <p className="text-red-500 text-sm">{error}</p>}
                 <button
-                  onClick={requestOtp}
+                  onClick={() => sendCode()}
                   disabled={loading}
                   className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                  Get OTP
+                  Send Code
                 </button>
               </div>
             </div>
@@ -254,26 +262,32 @@ export default function CandidatePortal() {
                 <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <KeyRound className="w-7 h-7 text-indigo-600" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">Verify OTP</h2>
-                <p className="text-gray-500 text-sm mt-1">Enter the 6-digit code</p>
+                <h2 className="text-xl font-bold text-gray-900">Enter Your Code</h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  {emailHint
+                    ? <>We sent a 6-digit code to <span className="font-medium text-gray-700">{emailHint}</span></>
+                    : 'Enter the 6-digit code we emailed you'}
+                </p>
               </div>
 
               {displayOtp && (
                 <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
-                  <p className="text-xs text-amber-600 mb-1">Demo mode — your OTP is:</p>
+                  <p className="text-xs text-amber-600 mb-1">Email not configured — your code is:</p>
                   <p className="text-2xl font-mono font-bold text-amber-700 tracking-widest">{displayOtp}</p>
                 </div>
               )}
 
+              {resent && <p className="mb-4 text-sm text-emerald-600 text-center">{resent}</p>}
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">OTP Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">6-Digit Code</label>
                   <input
                     type="text"
                     value={otp}
                     onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     onKeyDown={e => e.key === 'Enter' && verifyOtp()}
-                    placeholder="Enter 6-digit OTP"
+                    placeholder="Enter 6-digit code"
                     maxLength={6}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-center text-xl tracking-widest font-mono"
                   />
@@ -288,10 +302,17 @@ export default function CandidatePortal() {
                   Verify
                 </button>
                 <button
-                  onClick={() => { setStep(1); setOtp(''); setDisplayOtp(''); setError(''); }}
+                  onClick={() => sendCode({ isResend: true })}
+                  disabled={loading}
+                  className="w-full py-2 text-blue-600 hover:text-blue-700 text-sm font-medium disabled:opacity-50"
+                >
+                  Didn't get it? Resend the code
+                </button>
+                <button
+                  onClick={() => { setStep(1); setOtp(''); setDisplayOtp(''); setEmailHint(''); setResent(''); setError(''); }}
                   className="w-full py-2 text-gray-500 hover:text-gray-700 text-sm"
                 >
-                  Use a different number
+                  Use a different number or email
                 </button>
               </div>
             </div>
@@ -332,7 +353,7 @@ export default function CandidatePortal() {
                   </div>
                 </div>
                 <button
-                  onClick={() => { setStep(1); setPhone(''); setOtp(''); setData(null); setError(''); setDisplayOtp(''); }}
+                  onClick={() => { setStep(1); setIdentifier(''); setOtp(''); setData(null); setError(''); setDisplayOtp(''); setEmailHint(''); setResent(''); }}
                   className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors shrink-0"
                   title="Logout"
                 >

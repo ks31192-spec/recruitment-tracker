@@ -191,6 +191,28 @@ ${reason ? `<p style="color:#6b7280;line-height:1.6;font-size:14px"><em>${reason
   });
 }
 
+export async function sendPortalOtp(candidateEmail, candidateName, otp) {
+  const { name: schoolName } = getBranding();
+
+  const html = wrapHtml(`
+<h2 style="margin:0 0 16px;color:#111827;font-size:18px">Your Login Code</h2>
+<p style="color:#374151;line-height:1.6">Hi ${candidateName},</p>
+<p style="color:#374151;line-height:1.6">Use the code below to sign in to the candidate portal and check your application status:</p>
+<div style="text-align:center;margin:24px 0">
+<span style="display:inline-block;background:#eef2ff;color:#4338ca;padding:14px 32px;border-radius:10px;font-size:30px;font-weight:700;letter-spacing:10px;font-family:'Courier New',monospace">${otp}</span>
+</div>
+<p style="color:#6b7280;font-size:13px;line-height:1.5">This code expires in 10 minutes and can be used once. If you didn't request it, you can safely ignore this email — nobody can access your application without the code.</p>
+<p style="color:#374151;line-height:1.6;margin-top:20px">Regards,<br><strong>${schoolName}</strong></p>
+`, schoolName);
+
+  return sendEmail({
+    to: candidateEmail,
+    subject: `${otp} is your ${schoolName} login code`,
+    html,
+    text: `Hi ${candidateName}, your candidate portal login code is ${otp}. It expires in 10 minutes.`,
+  });
+}
+
 export async function sendTemplateEmail(candidateEmail, candidateName, templateId, extraVars = {}) {
   const { name: schoolName } = getBranding();
   const template = await db.prepare('SELECT * FROM email_templates WHERE id = ?').get(templateId);
