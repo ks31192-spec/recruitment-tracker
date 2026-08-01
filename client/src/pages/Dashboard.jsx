@@ -37,16 +37,20 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Each widget stands alone, so a failure in one must not blank the others —
-    // and none of these had a catch, so any failure was an unhandled rejection.
-    const get = (url, set, fallback) =>
-      api.get(url).then(r => set(r.data.data ?? fallback)).catch(() => set(fallback));
-    Promise.all([
-      get('/dashboard/summary', setSummary, {}),
-      get('/dashboard/recent-activity', setActivity, []),
-      get('/dashboard/pipeline-summary', setPipeline, []),
-      get('/dashboard/source-analysis', setSources, []),
-    ]).finally(() => setLoading(false));
+    // One request for the whole page: four separate calls each paid a full
+    // round trip, which is what made this section slow to fill in.
+    api.get('/dashboard/overview')
+      .then(r => {
+        const d = r.data.data || {};
+        setSummary(d.summary || {});
+        setActivity(d.activity || []);
+        setPipeline(d.pipeline || []);
+        setSources(d.sources || []);
+      })
+      .catch(() => {
+        setSummary({}); setActivity([]); setPipeline([]); setSources([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const maxPipeline = Math.max(...pipeline.map(p => p.count), 1);

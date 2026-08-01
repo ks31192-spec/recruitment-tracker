@@ -8,6 +8,7 @@
     { "source": "/uploads/(.*)", "destination": "/api" },
     { "source": "/((?!api|assets|favicon|.*\\..*).*)", "destination": "/index.html" }
   ],
+  "regions": ["bom1"],
   "functions": {
     "api/index.js": {
       "includeFiles": "server/**"

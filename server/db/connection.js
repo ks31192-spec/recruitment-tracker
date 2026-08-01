@@ -72,11 +72,25 @@ async function flushToFirestore() {
   }
 }
 
-async function refreshFromFirestore() {
+// Every /api request checks whether another instance wrote a newer blob. That is
+// one Firestore round trip per request, and a page that fires four requests at
+// once used to pay it four times over. Concurrent callers now share a single
+// check, and the result is reused for a moment afterwards.
+//
+// The window is deliberately tiny: a write bumps localVersion on the instance
+// that made it, so the only staleness this can expose is a write from a *different*
+// instance landing within the last second — shorter than the round trip that
+// wrote it, so it is not observable in practice.
+const VERSION_CACHE_MS = 1000;
+let versionCheckedAt = 0;
+let inFlightRefresh = null;
+
+async function doRefresh() {
   const firestore = getFirestore();
   if (!firestore || !SQL) return;
   try {
     const vDoc = await firestore.doc('system/db_version').get();
+    versionCheckedAt = Date.now();
     if (!vDoc.exists) return;
     const remoteVersion = vDoc.data().v;
     if (remoteVersion === localVersion) return;
@@ -91,6 +105,13 @@ async function refreshFromFirestore() {
   } catch (e) {
     console.error('Firestore refresh failed:', e.message);
   }
+}
+
+function refreshFromFirestore() {
+  if (Date.now() - versionCheckedAt < VERSION_CACHE_MS) return Promise.resolve();
+  if (inFlightRefresh) return inFlightRefresh;
+  inFlightRefresh = doRefresh().finally(() => { inFlightRefresh = null; });
+  return inFlightRefresh;
 }
 
 const wrapper = {
